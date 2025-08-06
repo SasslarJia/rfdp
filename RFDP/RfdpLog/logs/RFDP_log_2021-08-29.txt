@@ -1,0 +1,1 @@
+2021-08-29 00:14:49,917 - E:\Python Code\RFDP in Python\RFDP\RfdpLog\PrntLog_RFDP.py - [line:51] - ERROR > One of the queries contains repeated elements!
