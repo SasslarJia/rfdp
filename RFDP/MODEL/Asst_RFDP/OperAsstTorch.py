@@ -1,5 +1,24 @@
 #
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    class _TorchUnavailable(object):
+        class Tensor(object):
+            pass
+
+        class device(object):
+            def __init__(self, *_args, **_kwargs):
+                self.type = 'cpu'
+
+        class cuda(object):
+            @staticmethod
+            def is_available() -> bool:
+                return False
+
+        def __getattr__(self, name):
+            raise ModuleNotFoundError("torch is required for OperAsstTorch")
+
+    torch = _TorchUnavailable()
 #
 from MODEL.Asst_RFDP.OperAsst import OperAsst
 from MODEL.Enum_RFDP.AjcnEnum import AjcnEnum
