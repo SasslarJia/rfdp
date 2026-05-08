@@ -36,6 +36,7 @@ class IputLyr(MdlIput):
         [Refer to the Abstract Method]
         2020-10-9
         """
+        self._ensure_edges()
         # Initialize the list with elements of block
         q2b_list = list()
         # Check all the queries
@@ -69,6 +70,7 @@ class IputLyr(MdlIput):
         [Refer to the Abstract Method]
         2020-10-9
         """
+        self._ensure_edges()
         tmp_eles = list()
         for tmp_idx in rela_ids:
             tmp_eles.extend(self._edges_lst[tmp_idx])

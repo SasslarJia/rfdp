@@ -1,4 +1,5 @@
 #
+import numpy as np
 from typing import Tuple
 from abc import ABCMeta
 from abc import abstractmethod as ABCFctn
@@ -37,10 +38,11 @@ class MdlIput(metaclass=ABCMeta):
         # Initialize parameters
         self._smth_w, self._full_w, self._asst_rela = smth_w, full_w, asst_rela
         self._smpl_num, self._dim = self._smth_w.shape[0], DimEnum.Dim2
-        # Get the list with edges
-        self._edges_lst = MdlIput.__get_edges(smth_w, True, asst_rela)
-        # With smth_w, label each element with connected component index
-        self._cnct_ids = CnctCpnt(self._asst_rela)(self._edges_lst, self._smpl_num)
+        MdlIput.__warn_dense_graph(smth_w, asst_rela)
+        # Defer explicit edge-list materialization until a subclass really needs it.
+        self._edges_lst = None
+        # Connected components are computed directly from the adjacency matrix.
+        self._cnct_ids = MdlIput.__get_cnct_ids(smth_w, asst_rela)
         # Initialize outputs
         self._qry_lst, self._q2b_lst = list(), list()
 
@@ -101,6 +103,10 @@ class MdlIput(metaclass=ABCMeta):
         #
         return None
 
+    def _ensure_edges(self):
+        if self._edges_lst is None:
+            self._edges_lst = MdlIput.__get_edges(self._smth_w, True, self._asst_rela)
+
     # <editor-fold desc="Get the list with edges">
     @staticmethod
     def __get_edges(iput_mat, incl_self: bool, asst_rela: OperAsst) -> list:
@@ -109,25 +115,70 @@ class MdlIput(metaclass=ABCMeta):
         :param incl_self:
         :return: List of edges in graph
         """
-        # Get adjacent matrix from input matrix
-        cnct_mat = asst_rela.get_ajcn(iput_mat)
-        # Get max nearest neighborhoods of weighted matrix
-        max_nn = int(cnct_mat.sum(0).max())
-        # Get neighbors of each element, filling with zero elements in the end
-        _, top_ids = asst_rela.topk_2d(cnct_mat, max_nn, dim=1, rvrs=True)
-        # Get list for tops without index itself
+        cnct_mat = MdlIput.__to_numpy(asst_rela.get_ajcn(iput_mat)) > 0
+        row_ids, col_ids = np.nonzero(cnct_mat)
+        if not incl_self:
+            keep_flg = row_ids != col_ids
+            row_ids = row_ids[keep_flg]
+            col_ids = col_ids[keep_flg]
         edges_lst = list()
-        #
-        for idx in range(top_ids.shape[0]):
-            tmp_flg = cnct_mat[idx, top_ids[idx, :]] > 0
-            tmp_lst = list(set(asst_rela.cvrt2lst(top_ids[idx, tmp_flg])))
-            #
-            if not incl_self:
-                tmp_lst.remove(idx)
-            #
-            edges_lst.append(tmp_lst)
-        #
+        for _ in range(cnct_mat.shape[0]):
+            edges_lst.append(list())
+        if len(row_ids) == 0:
+            return edges_lst
+        sort_ids = np.argsort(row_ids, kind='mergesort')
+        row_ids = row_ids[sort_ids]
+        col_ids = col_ids[sort_ids]
+        unq_rows, strt_ids = np.unique(row_ids, return_index=True)
+        for idx in range(len(unq_rows)):
+            strt = strt_ids[idx]
+            end = strt_ids[idx + 1] if idx + 1 < len(strt_ids) else len(row_ids)
+            edges_lst[int(unq_rows[idx])] = col_ids[strt:end].tolist()
         return edges_lst
+
+    @staticmethod
+    def __get_cnct_ids(iput_mat, asst_rela: OperAsst) -> list:
+        cnct_mat = MdlIput.__to_numpy(asst_rela.get_ajcn(iput_mat)) > 0
+        if cnct_mat.shape[0] == 0:
+            return list()
+        np.fill_diagonal(cnct_mat, True)
+        deg_vec = np.asarray(cnct_mat.sum(axis=1)).reshape(-1)
+        if int(deg_vec.min()) == cnct_mat.shape[0]:
+            return [0] * cnct_mat.shape[0]
+        try:
+            from scipy.sparse import csr_matrix
+            from scipy.sparse.csgraph import connected_components
+            _, cc_ids = connected_components(csr_matrix(cnct_mat), directed=False,
+                                             return_labels=True)
+            return cc_ids.tolist()
+        except ModuleNotFoundError:
+            edges_lst = MdlIput.__get_edges(cnct_mat, True, asst_rela)
+            return CnctCpnt(asst_rela)(edges_lst, cnct_mat.shape[0])
+
+    @staticmethod
+    def __to_numpy(iput_mat):
+        if isinstance(iput_mat, np.ndarray):
+            return iput_mat
+        if hasattr(iput_mat, 'detach'):
+            return iput_mat.detach().cpu().numpy()
+        if hasattr(iput_mat, 'cpu') and hasattr(iput_mat, 'numpy'):
+            return iput_mat.cpu().numpy()
+        return np.asarray(iput_mat)
+
+    @staticmethod
+    def __warn_dense_graph(iput_mat, asst_rela: OperAsst):
+        smth_np = MdlIput.__to_numpy(iput_mat)
+        if smth_np.ndim != 2 or smth_np.shape[0] == 0:
+            return
+        cnct_mat = MdlIput.__to_numpy(asst_rela.get_ajcn(iput_mat)) > 0
+        np.fill_diagonal(cnct_mat, False)
+        edge_ratio = float(cnct_mat.mean())
+        if smth_np.shape[0] >= 4096 and edge_ratio > 0.05:
+            prnt_log._PrntLog__log.warning(
+                "Dense smoothness graph detected (edge ratio %.4f). "
+                "This usually means a distance matrix was passed as 'smth_w'. "
+                "Build a sparse KNN affinity graph first." % edge_ratio
+            )
 
     # </editor-fold>
 
