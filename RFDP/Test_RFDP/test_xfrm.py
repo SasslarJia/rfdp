@@ -48,13 +48,13 @@ class TestAffXfrm(untest.TestCase):
         fir = time.clock()
         fir_lst = Compose([Dist2Aff(k_num, asst_rela=OperAsstTorch()), KnnRstct(k_num, asst_rela=OperAsstTorch())])
         fir_knn = fir_lst(self.dis_mat)
-        fir_vec, fir_cc = CnctCpnt(OperAsstTorch())(fir_knn)
+        fir_vec = CnctCpnt(OperAsstTorch())(fir_knn, fir_knn.shape[0])
         print("Fir is ", time.clock() - fir)
         #
         sec = time.clock()
         sec_lst = Compose([Dist2Aff(k_num, asst_rela=OperAsstNumpy()), KnnRstct(k_num, asst_rela=OperAsstNumpy())])
         sec_knn = sec_lst(self.dis_mat)
-        sec_vec, sec_cc = CnctCpnt(OperAsstNumpy())(sec_knn)
+        sec_vec = CnctCpnt(OperAsstNumpy())(sec_knn, sec_knn.shape[0])
         print("Sec is ", time.clock() - sec)
         #
         self.assertEqual((np.array(fir_vec) - np.array(sec_vec)).sum() < self.err, True)

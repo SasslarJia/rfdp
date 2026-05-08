@@ -1,10 +1,5 @@
-#
-import sys
-#
 from MODEL.Asst_RFDP.OperAsst import OperAsst
 from MODEL.Asst_RFDP.OperAsstTorch import OperAsstTorch
-
-sys.setrecursionlimit(10000)
 
 
 class CnctCpnt(object):
@@ -35,36 +30,20 @@ class CnctCpnt(object):
                  2) List of elements in different connected components
         2020-10-6
         """
-        # Initialize connected component index vector
         cc_ids = [-1] * smpl_num
-        # Current connected component index
         cur_cc = -1
-        # Depth-first search
         for ele_idx in range(smpl_num):
-            # Whether eleId is labeled
-            if cc_ids[ele_idx] == -1:
-                # Initialize current connected component index
-                cur_cc = cur_cc + 1
-                cc_ids[ele_idx] = cur_cc
-                # Label element with connected component index
-                cc_ids = CnctCpnt.__recu_cc(cc_ids, edges_lst, ele_idx, cur_cc)
-        #
-        return cc_ids
-
-    @staticmethod
-    def __recu_cc(cc_ids, top_lst, strt_idx, cur_cc) -> list:
-        """ Recursion function for deep-first traversal
-        :param cc_ids: Initial connected component indexes for different elements
-        :param strt_idx: Reference element
-        :param top_lst: List with tops
-        :param cur_cc: Current connected component index
-        :return: Updated connected component indexes for different elements
-        """
-        #
-        for end_idx in top_lst[strt_idx]:
-            if cc_ids[end_idx] == -1:
-                cc_ids[end_idx] = cur_cc
-                cc_ids = CnctCpnt.__recu_cc(cc_ids, top_lst, end_idx, cur_cc)
+            if cc_ids[ele_idx] != -1:
+                continue
+            cur_cc += 1
+            stack = [ele_idx]
+            cc_ids[ele_idx] = cur_cc
+            while len(stack) > 0:
+                strt_idx = stack.pop()
+                for end_idx in edges_lst[strt_idx]:
+                    if cc_ids[end_idx] == -1:
+                        cc_ids[end_idx] = cur_cc
+                        stack.append(end_idx)
         #
         return cc_ids
 
@@ -80,4 +59,3 @@ class CnctCpnt(object):
     #         top_lst.append(tmp_lst)
     #     #
     #     return top_lst
-
