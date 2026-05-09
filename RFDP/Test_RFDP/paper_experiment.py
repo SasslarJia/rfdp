@@ -31,6 +31,12 @@ def parse_args():
                         help='Path to the input matrix file. Supports .mat/.npy/.npz.')
     parser.add_argument('--data-key', type=str, default='all_dists',
                         help='Key used when loading .mat/.npz input matrices.')
+    parser.add_argument('--cache-path', type=str, default=None,
+                        help='Optional .npz cache with precomputed aff_mat and knn_aff.')
+    parser.add_argument('--cache-aff-key', type=str, default='aff_mat',
+                        help='Key for full affinity matrix inside --cache-path.')
+    parser.add_argument('--cache-knn-key', type=str, default='knn_aff',
+                        help='Key for sparse KNN affinity matrix inside --cache-path.')
     parser.add_argument('--input-kind', type=str, default='distance',
                         choices=['distance', 'affinity', 'knn_affinity'],
                         help='Interpretation of the input matrix.')
@@ -140,6 +146,22 @@ def build_graph_inputs(args):
     if args.data_path is None:
         smth_w, full_w, labels = build_synthetic_case()
         return smth_w, full_w, labels, 'synthetic'
+    if args.cache_path is not None:
+        if os.path.splitext(args.cache_path)[1].lower() != '.npz':
+            raise ValueError('--cache-path must point to a .npz file.')
+        cache_data = np.load(args.cache_path)
+        if args.cache_knn_key not in cache_data:
+            raise KeyError("Cache key '" + args.cache_knn_key + "' not found in " + args.cache_path)
+        if args.cache_aff_key not in cache_data:
+            raise KeyError("Cache key '" + args.cache_aff_key + "' not found in " + args.cache_path)
+        smth_w = np.asarray(cache_data[args.cache_knn_key], dtype=float)
+        full_w = np.asarray(cache_data[args.cache_aff_key], dtype=float)
+        ensure_square(smth_w)
+        ensure_square(full_w)
+        if smth_w.shape != full_w.shape:
+            raise ValueError('Cached knn_aff and aff_mat must have the same shape.')
+        labels = load_labels(args, smth_w.shape[0])
+        return smth_w, full_w, labels, 'cached_dataset'
     raw_mat = np.asarray(load_array(args.data_path, args.data_key), dtype=float)
     ensure_square(raw_mat)
     if raw_mat.shape[0] <= 1:
@@ -297,7 +319,12 @@ def print_summary(mode: str, args, sample_num: int, topk: int, rankings: list, m
     print('Samples:', sample_num)
     print('Queries:', len(rankings))
     print('TopK:', topk)
-    print('Input kind:', 'synthetic_affinity' if mode == 'synthetic' else args.input_kind)
+    if mode == 'synthetic':
+        print('Input kind:', 'synthetic_affinity')
+    elif mode == 'cached_dataset':
+        print('Input kind:', 'cached_affinity_graph')
+    else:
+        print('Input kind:', args.input_kind)
     if refs is None:
         print('Evaluation: skipped (no labels or class metadata provided)')
     else:
@@ -314,12 +341,14 @@ def save_json(args, mode: str, rankings: list, metrics, prcs_lst, rcal_lst):
     oput_dict = {
         'mode': mode,
         'method': args.method,
-        'input_kind': args.input_kind if mode != 'synthetic' else 'synthetic_affinity',
+        'input_kind': args.input_kind if mode == 'dataset' else
+                      ('synthetic_affinity' if mode == 'synthetic' else 'cached_affinity_graph'),
         'topk': args.topk,
         'alpha': args.alpha,
         'beta': args.beta,
         'lambda_step': args.lambda_step,
         'local_topk': args.local_topk,
+        'cache_path': args.cache_path,
         'metrics': metrics,
         'precision_curve': prcs_lst,
         'recall_curve': rcal_lst,
