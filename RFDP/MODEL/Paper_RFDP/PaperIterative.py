@@ -3,6 +3,7 @@ from MODEL.Asst_RFDP.ProcAsst import ProcAsst
 from MODEL.Paper_RFDP.PaperUtils import add_temporary_connections
 from MODEL.Paper_RFDP.PaperUtils import build_shell_subset
 from MODEL.Paper_RFDP.PaperUtils import rank_by_similarity
+from MODEL.Paper_RFDP.PaperUtils import select_local_subgraph
 
 
 class _PaperIterativeRanker(object):
@@ -26,6 +27,7 @@ class _PaperIterativeRanker(object):
         while len(labeled) < self._nq:
             work_w = self._prepare_iteration_graph(labeled)
             _, _, s_ids = build_shell_subset(work_w, labeled)
+            s_ids = self._limit_iteration_subset(query_ids, labeled, s_ids)
             if len(s_ids) <= len(labeled):
                 break
             try:
@@ -49,6 +51,14 @@ class _PaperIterativeRanker(object):
         work_w, _ = add_temporary_connections(base_w, self._base_ranker.full_w, s_ids,
                                               self._lambda_step)
         return work_w
+
+    def _limit_iteration_subset(self, query_ids: list, labeled: list, s_ids: list) -> list:
+        local_topk = self._base_ranker.local_topk
+        if local_topk is None or len(s_ids) <= local_topk:
+            return s_ids
+        seed_ids = list(dict.fromkeys(query_ids + labeled))
+        return select_local_subgraph(self._base_ranker.full_w, seed_ids, local_topk,
+                                     allowed_ids=s_ids, include_ids=seed_ids)
 
 
 class IHyRdpPaper(_PaperIterativeRanker):

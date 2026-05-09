@@ -62,6 +62,8 @@ def parse_args():
                         help='Output length. For iterative methods this is used as nq.')
     parser.add_argument('--lambda-step', type=int, default=5,
                         help='Number of samples added per iterative round.')
+    parser.add_argument('--local-topk', type=int, default=None,
+                        help='Limit each paper solver call to a local candidate pool of this size.')
     parser.add_argument('--incl-qry', action='store_true',
                         help='Whether the query itself participates in local graph learning.')
     parser.add_argument('--preview', type=int, default=5,
@@ -198,9 +200,10 @@ def build_ranker(args, mdl_iput):
     if args.method in ['hyrdp', 'ihyrdp']:
         base_ranker = HyRdpPaper(mdl_iput=mdl_iput, solver=hyrdp_solver,
                                  alpha=args.alpha, beta=args.beta,
-                                 incl_qry=args.incl_qry)
+                                 incl_qry=args.incl_qry, local_topk=args.local_topk)
     else:
-        base_ranker = GmfptPaper(mdl_iput=mdl_iput, incl_qry=args.incl_qry)
+        base_ranker = GmfptPaper(mdl_iput=mdl_iput, incl_qry=args.incl_qry,
+                                 local_topk=args.local_topk)
     if args.method == 'hyrdp':
         return base_ranker
     if args.method == 'gmfpt':
@@ -316,6 +319,7 @@ def save_json(args, mode: str, rankings: list, metrics, prcs_lst, rcal_lst):
         'alpha': args.alpha,
         'beta': args.beta,
         'lambda_step': args.lambda_step,
+        'local_topk': args.local_topk,
         'metrics': metrics,
         'precision_curve': prcs_lst,
         'recall_curve': rcal_lst,

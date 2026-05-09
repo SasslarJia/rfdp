@@ -127,6 +127,43 @@ def rank_by_similarity(full_w, query_ids: list, excl_ids: list, top_num: int = N
     return ret_ids if top_num is None else ret_ids[:top_num]
 
 
+def select_local_subgraph(full_w, seed_ids: list, max_nodes: int, allowed_ids: list = None,
+                          include_ids: list = None) -> list:
+    """Pick a small local candidate pool around the seed nodes."""
+    full_w = to_numpy(full_w)
+    seed_ids = list(dict.fromkeys(int(tmp_id) for tmp_id in seed_ids))
+    if len(seed_ids) == 0:
+        return list()
+    if include_ids is None:
+        include_ids = list(seed_ids)
+    else:
+        include_ids = list(dict.fromkeys(int(tmp_id) for tmp_id in include_ids))
+    max_nodes = max(int(max_nodes), len(include_ids))
+    node_num = full_w.shape[0]
+    if allowed_ids is None:
+        cand_ids = np.arange(node_num, dtype=int)
+    else:
+        cand_ids = np.asarray(list(dict.fromkeys(int(tmp_id) for tmp_id in allowed_ids)), dtype=int)
+    score_vec = np.asarray(full_w[seed_ids, :].sum(axis=0), dtype=float).reshape(-1)
+    cand_scores = score_vec[cand_ids]
+    sort_ids = np.lexsort((cand_ids, -cand_scores))
+    ret_ids = list()
+    used_ids = set()
+    allowed_set = set(cand_ids.tolist())
+    for tmp_id in include_ids:
+        if tmp_id in allowed_set and tmp_id not in used_ids:
+            ret_ids.append(tmp_id)
+            used_ids.add(tmp_id)
+    for tmp_id in cand_ids[sort_ids].tolist():
+        if tmp_id in used_ids:
+            continue
+        ret_ids.append(tmp_id)
+        used_ids.add(tmp_id)
+        if len(ret_ids) >= max_nodes:
+            break
+    return ret_ids[:max_nodes]
+
+
 def add_temporary_connections(base_w, full_w, active_ids: list, bridge_num: int):
     """Add paper-style temporary connections for the selected components."""
     base_w = to_numpy(base_w)

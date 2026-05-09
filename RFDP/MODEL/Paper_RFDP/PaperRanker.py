@@ -3,6 +3,7 @@ import numpy as np
 from MODEL.Asst_RFDP.ProcAsst import ProcAsst
 from MODEL.Paper_RFDP.PaperUtils import build_paper_problem
 from MODEL.Paper_RFDP.PaperUtils import rank_by_similarity
+from MODEL.Paper_RFDP.PaperUtils import select_local_subgraph
 from MODEL.Paper_RFDP.PaperUtils import to_numpy
 from MODEL.Paper_RFDP.PaperSolvers import GmfptClosedForm
 from MODEL.Paper_RFDP.PaperSolvers import HyRdpClosedForm
@@ -12,12 +13,13 @@ from MODEL.Paper_RFDP.PaperSolvers import HyRdpIterative
 class _PaperRankerBase(object):
     """Common ranking logic for the paper-accurate implementations."""
 
-    def __init__(self, mdl_iput, incl_qry: bool = False):
+    def __init__(self, mdl_iput, incl_qry: bool = False, local_topk: int = None):
         self._mdl_iput = mdl_iput
         self._incl_qry = incl_qry
         self._graph_w = to_numpy(mdl_iput.smth_w)
         self._full_w = to_numpy(mdl_iput.ful_w if mdl_iput.ful_w is not None else mdl_iput.smth_w)
         self._smpl_num = self._graph_w.shape[0]
+        self._local_topk = local_topk
 
     def __call__(self, iput_qries: list, iput_len: int) -> list:
         dist_qries, dist_poses = ProcAsst.find_idcl(iput_qries)
@@ -33,6 +35,7 @@ class _PaperRankerBase(object):
     def solve_query(self, query_ids: list, iput_len: int, sub_ids: list = None, weight_mat=None) -> list:
         if sub_ids is None:
             sub_ids = self._default_subset(query_ids)
+        sub_ids = self._limit_subset(query_ids, sub_ids)
         rank_ids, _, _ = self.rank_subset(query_ids, sub_ids, weight_mat)
         return self._complete_output(query_ids, rank_ids, iput_len)
 
@@ -52,6 +55,13 @@ class _PaperRankerBase(object):
         q2b = self._mdl_iput([query_ids], self._incl_qry)[0]
         return self._mdl_iput.get_eles(q2b.rela_ids)
 
+    def _limit_subset(self, query_ids: list, sub_ids: list) -> list:
+        sub_ids = list(dict.fromkeys(int(tmp_id) for tmp_id in sub_ids))
+        if self._local_topk is None or len(sub_ids) <= self._local_topk:
+            return sub_ids
+        return select_local_subgraph(self._full_w, query_ids, self._local_topk,
+                                     allowed_ids=sub_ids, include_ids=query_ids)
+
     def _complete_output(self, query_ids: list, rank_ids: list, iput_len: int) -> list:
         ret_ids = list(rank_ids[:iput_len])
         if len(ret_ids) >= iput_len:
@@ -70,13 +80,17 @@ class _PaperRankerBase(object):
     def full_w(self):
         return self._full_w
 
+    @property
+    def local_topk(self):
+        return self._local_topk
+
 
 class HyRdpPaper(_PaperRankerBase):
     """Paper-accurate HyRDP ranker."""
 
     def __init__(self, mdl_iput, solver=None, alpha: float = 5.0, beta: float = 25.0,
-                 incl_qry: bool = False):
-        super(HyRdpPaper, self).__init__(mdl_iput, incl_qry)
+                 incl_qry: bool = False, local_topk: int = None):
+        super(HyRdpPaper, self).__init__(mdl_iput, incl_qry, local_topk)
         self._solver = HyRdpIterative() if solver is None else solver
         self._alpha = alpha
         self._beta = beta
@@ -100,8 +114,8 @@ class HyRdpPaper(_PaperRankerBase):
 class GmfptPaper(_PaperRankerBase):
     """Paper-accurate GMFPT ranker."""
 
-    def __init__(self, mdl_iput, solver=None, incl_qry: bool = False):
-        super(GmfptPaper, self).__init__(mdl_iput, incl_qry)
+    def __init__(self, mdl_iput, solver=None, incl_qry: bool = False, local_topk: int = None):
+        super(GmfptPaper, self).__init__(mdl_iput, incl_qry, local_topk)
         self._solver = GmfptClosedForm() if solver is None else solver
 
     def _solve_problem(self, problem) -> np.ndarray:
@@ -110,4 +124,3 @@ class GmfptPaper(_PaperRankerBase):
     @property
     def solver(self):
         return self._solver
-
