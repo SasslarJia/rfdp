@@ -7,12 +7,23 @@ from MODEL.Paper_RFDP.PaperProblem import PaperProblem
 def to_numpy(iput_mat) -> np.ndarray:
     """Convert numpy / torch-like matrices to numpy arrays."""
     if isinstance(iput_mat, np.ndarray):
-        return iput_mat.astype(float, copy=False)
+        if np.issubdtype(iput_mat.dtype, np.floating):
+            return iput_mat
+        return iput_mat.astype(np.float32, copy=False)
     if hasattr(iput_mat, 'detach'):
-        return iput_mat.detach().cpu().numpy().astype(float, copy=False)
+        tmp_mat = iput_mat.detach().cpu().numpy()
+        if np.issubdtype(tmp_mat.dtype, np.floating):
+            return tmp_mat
+        return tmp_mat.astype(np.float32, copy=False)
     if hasattr(iput_mat, 'cpu') and hasattr(iput_mat, 'numpy'):
-        return iput_mat.cpu().numpy().astype(float, copy=False)
-    return np.asarray(iput_mat, dtype=float)
+        tmp_mat = iput_mat.cpu().numpy()
+        if np.issubdtype(tmp_mat.dtype, np.floating):
+            return tmp_mat
+        return tmp_mat.astype(np.float32, copy=False)
+    tmp_mat = np.asarray(iput_mat)
+    if np.issubdtype(tmp_mat.dtype, np.floating):
+        return tmp_mat
+    return tmp_mat.astype(np.float32, copy=False)
 
 
 def safe_divide(numr, dnmtr):

@@ -143,9 +143,6 @@ def ensure_square(iput_mat: np.ndarray):
 
 
 def build_graph_inputs(args):
-    if args.data_path is None:
-        smth_w, full_w, labels = build_synthetic_case()
-        return smth_w, full_w, labels, 'synthetic'
     if args.cache_path is not None:
         if os.path.splitext(args.cache_path)[1].lower() != '.npz':
             raise ValueError('--cache-path must point to a .npz file.')
@@ -154,14 +151,17 @@ def build_graph_inputs(args):
             raise KeyError("Cache key '" + args.cache_knn_key + "' not found in " + args.cache_path)
         if args.cache_aff_key not in cache_data:
             raise KeyError("Cache key '" + args.cache_aff_key + "' not found in " + args.cache_path)
-        smth_w = np.asarray(cache_data[args.cache_knn_key], dtype=float)
-        full_w = np.asarray(cache_data[args.cache_aff_key], dtype=float)
+        smth_w = np.asarray(cache_data[args.cache_knn_key])
+        full_w = np.asarray(cache_data[args.cache_aff_key])
         ensure_square(smth_w)
         ensure_square(full_w)
         if smth_w.shape != full_w.shape:
             raise ValueError('Cached knn_aff and aff_mat must have the same shape.')
         labels = load_labels(args, smth_w.shape[0])
         return smth_w, full_w, labels, 'cached_dataset'
+    if args.data_path is None:
+        smth_w, full_w, labels = build_synthetic_case()
+        return smth_w, full_w, labels, 'synthetic'
     raw_mat = np.asarray(load_array(args.data_path, args.data_key), dtype=float)
     ensure_square(raw_mat)
     if raw_mat.shape[0] <= 1:
