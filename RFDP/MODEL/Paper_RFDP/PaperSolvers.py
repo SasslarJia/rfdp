@@ -1,15 +1,35 @@
 #
 import numpy as np
+from MODEL.Paper_RFDP.PaperUtils import check_linear_residual
 from MODEL.Paper_RFDP.PaperUtils import safe_divide
 from MODEL.Paper_RFDP.PaperUtils import solve_linear
+
+
+def _validate_scores(scores):
+    scores = np.asarray(scores, dtype=float)
+    if not np.all(np.isfinite(scores)):
+        raise np.linalg.LinAlgError("Diffusion scores are non-finite")
+    tolerance = 1e-10 * max(1.0, float(np.max(np.abs(scores), initial=0.0)))
+    if np.any(scores < -tolerance):
+        raise np.linalg.LinAlgError("Diffusion solver produced negative distance scores")
+    return np.maximum(scores, 0.0)
+
+
+def _validate_hyrdp_inputs(problem, alpha, beta):
+    if not np.isfinite(alpha) or not np.isfinite(beta) or alpha <= 0 or beta <= 0:
+        raise ValueError("HyRDP alpha and beta must be finite and positive")
+    if np.any(problem.h_u <= 0) or np.any(problem.d_u <= 0):
+        raise ValueError("HyRDP requires positive unlabeled and total degrees")
 
 
 class HyRdpClosedForm(object):
     """Exact HyRDP closed-form solver based on Eq. (13)-(14)."""
 
     def solve(self, problem, alpha: float, beta: float) -> np.ndarray:
+        self.last_relative_residual = 0.0
         if problem.empty_unlabeled():
             return np.zeros(0, dtype=float)
+        _validate_hyrdp_inputs(problem, alpha, beta)
         h_u = problem.h_u
         d_u = problem.d_u
         e_u = problem.e_u
@@ -22,7 +42,9 @@ class HyRdpClosedForm(object):
         inv_sqrt_h = safe_divide(np.ones_like(h_u), np.sqrt(np.maximum(h_u, 1e-12)))
         coef_mat = np.diag(lambdas) - w_uu
         coef_mat = inv_sqrt_h[:, None] * coef_mat * inv_sqrt_h[None, :]
-        return solve_linear(coef_mat, rhs)
+        scores = _validate_scores(solve_linear(coef_mat, rhs))
+        self.last_relative_residual = check_linear_residual(coef_mat, scores, rhs)
+        return scores
 
 
 class HyRdpIterative(object):
@@ -34,8 +56,10 @@ class HyRdpIterative(object):
         self._tol = tol
 
     def solve(self, problem, alpha: float, beta: float) -> np.ndarray:
+        self.last_relative_residual = 0.0
         if problem.empty_unlabeled():
             return np.zeros(0, dtype=float)
+        _validate_hyrdp_inputs(problem, alpha, beta)
         h_u = problem.h_u
         d_u = problem.d_u
         e_u = problem.e_u
@@ -68,15 +92,24 @@ class HyRdpIterative(object):
                 stbl_num = 0
                 prev_rank = cur_rank
             x_vec = nxt_x
-        return np.sqrt(np.maximum(h_u, 1e-12)) * x_vec
+        scores = _validate_scores(sqrt_h * x_vec)
+        inv_sqrt_h = safe_divide(np.ones_like(h_u), sqrt_h)
+        coef_mat = inv_sqrt_h[:, None] * (np.diag(lambdas) - w_uu) * inv_sqrt_h[None, :]
+        # Rank stability is not numerical convergence; exhausted/truncated
+        # series may only be returned when they satisfy the same equation.
+        self.last_relative_residual = check_linear_residual(coef_mat, scores, rhs)
+        return scores
 
 
 class GmfptClosedForm(object):
     """Closed-form GMFPT solver based on Eq. (20)."""
 
     def solve(self, problem) -> np.ndarray:
+        self.last_relative_residual = 0.0
         if problem.empty_unlabeled():
             return np.zeros(0, dtype=float)
         coef_mat = np.eye(problem.p_uu.shape[0], dtype=float) - problem.p_uu
         rhs = np.ones(problem.p_uu.shape[0], dtype=float)
-        return solve_linear(coef_mat, rhs)
+        scores = _validate_scores(solve_linear(coef_mat, rhs))
+        self.last_relative_residual = check_linear_residual(coef_mat, scores, rhs)
+        return scores

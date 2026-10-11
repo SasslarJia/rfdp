@@ -82,6 +82,56 @@ class TestReIDEval(untest.TestCase):
         self.assertEqual(metrics['mAP'], 1.0)
         self.assertEqual(metrics['cmc'], [1.0, 1.0])
 
+    def test_minp_uses_filtered_last_positive_rank(self):
+        # Query/self-camera match and junk do not consume evaluation ranks.
+        # Eligible positives occupy filtered positions 1, 3, 5.
+        metrics = evaluate_reid_rankings(
+            rankings=[[0, 1, 2, 3, 4, 5, 6, 7]], query_ids=[0],
+            query_pids=[1], query_camids=[1],
+            gallery_pids=[1, 1, -1, 2, 1, 3, 1],
+            gallery_camids=[1, 2, 2, 2, 3, 2, 4], gallery_offset=1,
+            max_rank=5, return_per_query=True)
+        self.assertAlmostEqual(metrics['mAP'], (1.0 + 2.0 / 3.0 + 3.0 / 5.0) / 3.0)
+        self.assertAlmostEqual(metrics['mINP'], 3.0 / 5.0)
+        query = metrics['per_query'][0]
+        self.assertEqual((query['query_id'], query['pid'], query['camid']), (0, 1, 1))
+        self.assertEqual(query['rank1'], 1.0)
+        self.assertEqual(query['positive_count'], 3)
+        self.assertEqual(query['retrieved_positive_count'], 3)
+        self.assertAlmostEqual(query['INP'], 0.6)
+
+    def test_minp_missing_positive_is_zero_without_inflating_ap(self):
+        metrics = evaluate_reid_rankings(
+            rankings=[[1]], query_ids=[0], query_pids=[1], query_camids=[1],
+            gallery_pids=[1, 1, 2], gallery_camids=[2, 3, 2], gallery_offset=1,
+            max_rank=3, return_per_query=True)
+        self.assertEqual(metrics['rank-1'], 1.0)
+        self.assertEqual(metrics['mAP'], 0.5)
+        self.assertEqual(metrics['mINP'], 0.0)
+        self.assertEqual(metrics['per_query'][0]['retrieved_positive_count'], 1)
+        self.assertEqual(metrics['per_query'][0]['positive_count'], 2)
+
+    def test_per_query_retains_invalid_query_and_defaults_stay_compatible(self):
+        kwargs = dict(rankings=[[2, 3], [2, 3]], query_ids=[0, 1],
+                      query_pids=[1, 2], query_camids=[1, 1],
+                      gallery_pids=[1, 2], gallery_camids=[2, 1], gallery_offset=2,
+                      max_rank=2)
+        metrics = evaluate_reid_rankings(**kwargs, return_per_query=True)
+        self.assertEqual(metrics['valid_queries'], 1)
+        self.assertEqual(metrics['mINP'], 1.0)
+        self.assertFalse(metrics['per_query'][1]['valid'])
+        self.assertIsNone(metrics['per_query'][1]['AP'])
+        self.assertIsNone(metrics['per_query'][1]['INP'])
+        self.assertNotIn('per_query', evaluate_reid_rankings(**kwargs))
+
+    def test_duplicate_global_ids_do_not_inflate_positive_counts(self):
+        metrics = evaluate_reid_rankings(
+            rankings=[[1, 1, 2]], query_ids=[0], query_pids=[1], query_camids=[1],
+            gallery_pids=[1, 1], gallery_camids=[2, 3], gallery_offset=1,
+            max_rank=2, return_per_query=True)
+        self.assertEqual(metrics['mINP'], 1.0)
+        self.assertEqual(metrics['per_query'][0]['retrieved_positive_count'], 2)
+
 
 if __name__ == '__main__':
     untest.main()

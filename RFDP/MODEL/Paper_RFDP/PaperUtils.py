@@ -1,6 +1,8 @@
 #
+import warnings
+
 import numpy as np
-from RfdpLog.PrntLog_RFDP import prnt_log
+from scipy import linalg
 from MODEL.Paper_RFDP.PaperProblem import PaperProblem
 
 
@@ -40,13 +42,42 @@ def row_normalize(iput_mat, row_sums=None) -> np.ndarray:
     return safe_divide(iput_mat, row_sums[:, None])
 
 
+def check_linear_residual(coef_mat, solution, rhs_mat, tol: float = 1e-8):
+    """Reject a finite output that does not solve the requested equation."""
+    if not np.all(np.isfinite(solution)):
+        raise np.linalg.LinAlgError("Linear solver produced non-finite values")
+    residual = np.linalg.norm(coef_mat.dot(solution) - rhs_mat)
+    scale = max(float(np.linalg.norm(rhs_mat)), np.finfo(float).tiny)
+    relative_residual = float(residual / scale)
+    if not np.isfinite(relative_residual) or relative_residual > tol:
+        raise np.linalg.LinAlgError(
+            f"Linear solve relative residual {relative_residual:.3e} exceeds {tol:.3e}")
+    return relative_residual
+
+
 def solve_linear(coef_mat: np.ndarray, rhs_mat):
-    coef_mat = np.asarray(coef_mat, dtype=float)
-    rhs_mat = np.asarray(rhs_mat, dtype=float)
-    try:
-        return np.linalg.solve(coef_mat, rhs_mat)
-    except np.linalg.LinAlgError:
-        return np.linalg.lstsq(coef_mat, rhs_mat, rcond=None)[0]
+    """Solve a nonsingular equation; never substitute a least-squares ranking."""
+    coef_mat = np.asarray(coef_mat, dtype=np.float64)
+    rhs_mat = np.asarray(rhs_mat, dtype=np.float64)
+    if coef_mat.ndim != 2 or coef_mat.shape[0] != coef_mat.shape[1]:
+        raise ValueError("Coefficient matrix must be square")
+    if rhs_mat.ndim not in (1, 2) or rhs_mat.shape[0] != coef_mat.shape[0]:
+        raise ValueError("Right-hand side has incompatible dimensions")
+    if not np.all(np.isfinite(coef_mat)) or not np.all(np.isfinite(rhs_mat)):
+        raise ValueError("Linear system must contain only finite values")
+    symmetric = np.allclose(coef_mat, coef_mat.T, rtol=1e-12, atol=1e-12)
+    # The symmetric HyRDP coefficient is positive definite on a grounded graph.
+    # GMFPT can be nonsymmetric and therefore uses the general solve.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", linalg.LinAlgWarning)
+        try:
+            result = linalg.solve(coef_mat, rhs_mat,
+                                  assume_a="pos" if symmetric else "gen",
+                                  check_finite=False)
+        except linalg.LinAlgWarning as err:
+            raise np.linalg.LinAlgError(f"Unreliable linear system: {err}") from err
+    check_linear_residual(coef_mat, result, rhs_mat)
+    return result
 
 
 def connected_components(weight_mat) -> list:
@@ -96,11 +127,39 @@ def build_paper_problem(weight_mat, sub_ids: list, query_ids: list) -> PaperProb
     """Construct the local problem using the exact variable split in the paper."""
     sub_ids = list(sub_ids)
     query_ids = list(query_ids)
-    if len(sub_ids) == 0:
-        prnt_log.error("Subset cannot be empty")
+    if not sub_ids:
+        raise ValueError("Subset cannot be empty")
+    if not query_ids:
+        raise ValueError("At least one query is required")
+    if len(set(sub_ids)) != len(sub_ids) or len(set(query_ids)) != len(query_ids):
+        raise ValueError("Subset and query IDs must be unique")
     if not set(query_ids).issubset(set(sub_ids)):
-        prnt_log.error("Query should be contained in the subset")
-    sub_w = to_numpy(weight_mat)[np.ix_(sub_ids, sub_ids)]
+        raise ValueError("Query should be contained in the subset")
+    source_w = to_numpy(weight_mat)
+    if source_w.ndim != 2 or source_w.shape[0] != source_w.shape[1]:
+        raise ValueError("Weight matrix must be square")
+    if any(idx < 0 or idx >= source_w.shape[0] for idx in sub_ids):
+        raise ValueError("Subset IDs are outside the graph")
+    # Promote the small extracted graph before any degree/row accumulation.
+    # The full graph can remain float32 to preserve its memory footprint.
+    sub_w = np.array(source_w[np.ix_(sub_ids, sub_ids)], dtype=np.float64, copy=True)
+    if not np.all(np.isfinite(sub_w)) or np.any(sub_w < 0):
+        raise ValueError("Local graph weights must be finite and nonnegative")
+    qry_local = [sub_ids.index(tmp_id) for tmp_id in query_ids]
+    reachable = set(qry_local)
+    stack = list(qry_local)
+    while stack:
+        # Reverse traversal also handles directed weights: every retained node
+        # must have a positive-weight path ending in the labeled query set.
+        current = stack.pop()
+        for neighbor in np.flatnonzero(sub_w[:, current] > 0):
+            neighbor = int(neighbor)
+            if neighbor not in reachable:
+                reachable.add(neighbor)
+                stack.append(neighbor)
+    keep = [idx for idx in range(len(sub_ids)) if idx in reachable]
+    sub_ids = [sub_ids[idx] for idx in keep]
+    sub_w = sub_w[np.ix_(keep, keep)]
     qry_local = [sub_ids.index(tmp_id) for tmp_id in query_ids]
     qry_set = set(qry_local)
     unl_local = [idx for idx in range(len(sub_ids)) if idx not in qry_set]

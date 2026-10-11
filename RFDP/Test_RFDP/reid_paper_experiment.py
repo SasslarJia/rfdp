@@ -1,5 +1,7 @@
 #
 import argparse
+import hashlib
+import subprocess
 import json
 import os
 import sys
@@ -50,7 +52,7 @@ def parse_args():
     parser.add_argument('--gamma', type=float, default=0.4,
                         help='Gamma for Dist2Aff.')
     parser.add_argument('--method', type=str, default='ihyrdp',
-                        choices=['baseline', 'hyrdp', 'gmfpt', 'ihyrdp', 'igmfpt'])
+                        choices=['baseline', 'affinity', 'hyrdp', 'gmfpt', 'ihyrdp', 'igmfpt'])
     parser.add_argument('--hyrdp-solver', type=str, default='iterative',
                         choices=['iterative', 'closed'])
     parser.add_argument('--alpha', type=float, default=5.0)
@@ -72,7 +74,9 @@ def parse_args():
     parser.add_argument('--save-json', type=str, default=None,
                         help='Optional output JSON with metrics and rankings.')
     parser.add_argument('--save-rankings', type=str, default=None,
-                        help='Optional .npy path to save rankings as an object array.')
+                        help='Optional .npy path to save equal-length rankings as int32, without pickle.')
+    parser.add_argument('--save-per-query-json', type=str, default=None,
+                        help='Optional JSON with query AP, Rank-1, INP, identity, and camera.')
     parser.add_argument('--preview', type=int, default=3)
     return parser.parse_args()
 
@@ -230,7 +234,7 @@ def build_or_load_graph(args, all_feats: np.ndarray):
     return aff_mat, knn_aff
 
 
-def build_ranker(args, mdl_iput):
+def build_ranker(args, mdl_iput, fallback_similarity=None):
     if args.hyrdp_solver == 'closed':
         hyrdp_solver = HyRdpClosedForm()
     else:
@@ -238,10 +242,12 @@ def build_ranker(args, mdl_iput):
     if args.method in ['hyrdp', 'ihyrdp']:
         base_ranker = HyRdpPaper(mdl_iput=mdl_iput, solver=hyrdp_solver,
                                  alpha=args.alpha, beta=args.beta,
-                                 incl_qry=False, local_topk=args.local_topk)
+                                 incl_qry=False, local_topk=args.local_topk,
+                                 fallback_similarity=fallback_similarity)
     else:
         base_ranker = GmfptPaper(mdl_iput=mdl_iput, incl_qry=False,
-                                 local_topk=args.local_topk)
+                                 local_topk=args.local_topk,
+                                 fallback_similarity=fallback_similarity)
     if args.method == 'hyrdp' or args.method == 'gmfpt':
         return base_ranker
     if args.topk is None or args.topk <= 0:
@@ -294,11 +300,55 @@ def run_baseline(args, query_f: np.ndarray, gallery_f: np.ndarray):
     return queries, rankings
 
 
+def run_affinity(args, aff_mat: np.ndarray, query_num: int):
+    """Isolate adaptive-kernel conversion from diffusion, using the same graph cache."""
+    used_query_num = resolve_used_query_num(args.query_limit, query_num)
+    length = aff_mat.shape[0] if args.topk is None else min(args.topk, aff_mat.shape[0])
+    if length <= 0:
+        raise ValueError('topk should be positive.')
+    queries = [[idx] for idx in range(used_query_num)]
+    rankings = [np.argsort(-aff_mat[idx], kind='stable')[:length].astype(np.int32).tolist()
+                for idx in range(used_query_num)]
+    args.topk = length
+    return queries, rankings
+
+
+def original_similarity_fallback(all_feats: np.ndarray):
+    """Return original cosine scores without storing another dense distance matrix."""
+    normalized = l2_normalize(all_feats).astype(np.float32, copy=False)
+
+    def similarity(query_ids):
+        scores = normalized[np.asarray(query_ids, dtype=int)].dot(normalized.T)
+        return np.mean(scores, axis=0)
+
+    return similarity
+
+
+def collect_run_metadata(args):
+    digest = hashlib.sha256()
+    with open(args.mat_path, 'rb') as source:
+        for block in iter(lambda: source.read(1024 * 1024), b''):
+            digest.update(block)
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    try:
+        head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo_root,
+                                       text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
+        dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=repo_root,
+                                            text=True, timeout=5).strip())
+    except (OSError, subprocess.SubprocessError):
+        head, dirty = None, None
+    return {'feature_sha256': digest.hexdigest(), 'code_git_head': head,
+            'code_git_dirty': dirty,
+            'evaluation_protocol': 'Market1501: remove pid=-1 and same pid/same camera; retain pid=0'}
+
+
 def print_summary(args, query_num: int, gallery_num: int, metrics: dict, rankings: list):
     print('Method:', args.method)
     print('Queries evaluated:', metrics['valid_queries'], '/', len(rankings))
     print('Gallery:', gallery_num)
     print('mAP:', round(metrics['mAP'] * 100.0, 2))
+    if 'mINP' in metrics:
+        print('mINP:', round(metrics['mINP'] * 100.0, 2))
     for key in ['rank-1', 'rank-5', 'rank-10', 'rank-20']:
         if key in metrics:
             print(key + ':', round(metrics[key] * 100.0, 2))
@@ -328,14 +378,25 @@ def save_outputs(args, metrics: dict, rankings: list, query_num: int, gallery_nu
             'beta': args.beta,
             'lambda_step': args.lambda_step,
             'local_topk': args.local_topk,
-            'metrics': metrics,
+            'metrics': {key: value for key, value in metrics.items() if key != 'per_query'},
+            'run_metadata': collect_run_metadata(args),
         }
+        if getattr(args, 'experiment_diagnostics', None) is not None:
+            out['solver_diagnostics'] = args.experiment_diagnostics
         if args.method == 'baseline':
             out['distance'] = 'cosine_on_l2_normalized_features'
         with open(args.save_json, 'w', encoding='utf-8') as file_obj:
             json.dump(out, file_obj, indent=2)
+    if getattr(args, 'save_per_query_json', None) is not None:
+        if 'per_query' not in metrics:
+            raise ValueError('Per-query output requires evaluate_reid_rankings(return_per_query=True).')
+        with open(args.save_per_query_json, 'w', encoding='utf-8') as file_obj:
+            json.dump({'method': args.method, 'queries': metrics['per_query']}, file_obj, indent=2)
     if args.save_rankings is not None:
-        np.save(args.save_rankings, np.asarray(rankings, dtype=object), allow_pickle=True)
+        lengths = {len(row) for row in rankings}
+        if len(lengths) > 1:
+            raise ValueError('save-rankings requires equal-length rows; object/pickle output is disabled.')
+        np.save(args.save_rankings, np.asarray(rankings, dtype=np.int32), allow_pickle=False)
 
 
 def main():
@@ -349,7 +410,8 @@ def main():
         metrics = evaluate_reid_rankings(rankings=rankings, query_ids=query_ids,
                                          query_pids=query_pids, query_camids=query_camids,
                                          gallery_pids=gallery_pids, gallery_camids=gallery_camids,
-                                         gallery_offset=query_num, max_rank=args.eval_max_rank)
+                                         gallery_offset=query_num, max_rank=args.eval_max_rank,
+                                         return_per_query=args.save_per_query_json is not None)
         print_summary(args, query_num, gallery_num, metrics, rankings)
         save_outputs(args, metrics, rankings, query_num, gallery_num)
         return
@@ -358,15 +420,20 @@ def main():
         args.topk = all_feats.shape[0]
     args.topk = min(args.topk, all_feats.shape[0])
     aff_mat, knn_aff = build_or_load_graph(args, all_feats)
-    mdl_iput = IputWhl(smth_w=knn_aff, fit_w=knn_aff, full_w=aff_mat,
-                       asst_rela=OperAsstNumpy())
-    ranker = build_ranker(args, mdl_iput)
-    query_wrappers, rankings = run_ranker(args, ranker, query_num, all_feats.shape[0])
+    if args.method == 'affinity':
+        query_wrappers, rankings = run_affinity(args, aff_mat, query_num)
+    else:
+        mdl_iput = IputWhl(smth_w=knn_aff, fit_w=knn_aff, full_w=aff_mat,
+                           asst_rela=OperAsstNumpy())
+        fallback_similarity = original_similarity_fallback(all_feats)
+        ranker = build_ranker(args, mdl_iput, fallback_similarity=fallback_similarity)
+        query_wrappers, rankings = run_ranker(args, ranker, query_num, all_feats.shape[0])
     query_ids = [tmp[0] for tmp in query_wrappers]
     metrics = evaluate_reid_rankings(rankings=rankings, query_ids=query_ids,
                                      query_pids=query_pids, query_camids=query_camids,
                                      gallery_pids=gallery_pids, gallery_camids=gallery_camids,
-                                     gallery_offset=query_num, max_rank=args.eval_max_rank)
+                                     gallery_offset=query_num, max_rank=args.eval_max_rank,
+                                     return_per_query=args.save_per_query_json is not None)
     print_summary(args, query_num, gallery_num, metrics, rankings)
     save_outputs(args, metrics, rankings, query_num, gallery_num)
 
