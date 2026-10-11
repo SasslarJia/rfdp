@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import sys
-from typing import Optional
 
 import numpy as np
 
@@ -41,12 +40,17 @@ def parse_args():
                         help='Optional .npz path to save aff_mat/knn_aff.')
     parser.add_argument('--cache-aff-key', type=str, default='aff_mat')
     parser.add_argument('--cache-knn-key', type=str, default='knn_aff')
+    parser.add_argument('--graph-mode', type=str, default='dense',
+                        choices=['dense', 'sparse_topk'],
+                        help='dense keeps the original full-matrix graph; sparse_topk builds a top-k sparse approximation.')
+    parser.add_argument('--sparse-full-topk', type=int, default=500,
+                        help='Neighbors retained per row in aff_mat when graph-mode=sparse_topk.')
     parser.add_argument('--k-num', type=int, default=20,
                         help='K for distance-to-affinity and KNN graph construction.')
     parser.add_argument('--gamma', type=float, default=0.4,
                         help='Gamma for Dist2Aff.')
     parser.add_argument('--method', type=str, default='ihyrdp',
-                        choices=['hyrdp', 'gmfpt', 'ihyrdp', 'igmfpt'])
+                        choices=['baseline', 'hyrdp', 'gmfpt', 'ihyrdp', 'igmfpt'])
     parser.add_argument('--hyrdp-solver', type=str, default='iterative',
                         choices=['iterative', 'closed'])
     parser.add_argument('--alpha', type=float, default=5.0)
@@ -133,6 +137,65 @@ def pairwise_l2_distance(feats: np.ndarray, batch_size: int, dtype) -> np.ndarra
     return dist_mat
 
 
+def batch_topk_l2(feats: np.ndarray, batch_size: int, dtype, top_num: int):
+    feats = l2_normalize(feats).astype(dtype, copy=False)
+    sample_num = feats.shape[0]
+    top_num = min(int(top_num), sample_num)
+    top_dists = np.empty((sample_num, top_num), dtype=dtype)
+    top_ids = np.empty((sample_num, top_num), dtype=np.int32)
+    feat_t = feats.T
+    for start in range(0, sample_num, batch_size):
+        end = min(start + batch_size, sample_num)
+        sim = feats[start:end].dot(feat_t)
+        dist = np.maximum(2.0 - 2.0 * sim, 0.0)
+        np.sqrt(dist, out=dist)
+        part_ids = np.argpartition(dist, top_num - 1, axis=1)[:, :top_num]
+        part_vals = np.take_along_axis(dist, part_ids, axis=1)
+        sort_ids = np.argsort(part_vals, axis=1)
+        top_ids[start:end] = np.take_along_axis(part_ids, sort_ids, axis=1).astype(np.int32)
+        top_dists[start:end] = np.take_along_axis(part_vals, sort_ids, axis=1).astype(dtype, copy=False)
+        print('TopK distance rows', str(end) + '/' + str(sample_num))
+    return top_dists, top_ids
+
+
+def build_sparse_topk_graph(args, all_feats: np.ndarray):
+    sample_num = all_feats.shape[0]
+    if args.k_num <= 0 or args.k_num >= sample_num:
+        raise ValueError('k-num should be in [1, sample_num - 1].')
+    if args.sparse_full_topk < args.k_num:
+        raise ValueError('sparse-full-topk should be >= k-num.')
+    dtype = np.float32 if args.dtype == 'float32' else np.float64
+    full_top = min(args.sparse_full_topk + 1, sample_num)
+    top_dists, top_ids = batch_topk_l2(all_feats, args.batch_size, dtype, full_top)
+    scale_num = min(args.k_num + 1, full_top)
+    local_sums = top_dists[:, 1:scale_num].sum(axis=1)
+    wt_val = args.gamma / (2.0 * args.k_num)
+    aff_mat = np.zeros((sample_num, sample_num), dtype=dtype)
+    for row_idx in range(sample_num):
+        ids = top_ids[row_idx]
+        denom = wt_val * (local_sums[row_idx] + local_sums[ids])
+        denom = np.maximum(denom, 1e-12)
+        vals = np.exp(-np.square(top_dists[row_idx] / denom)).astype(dtype, copy=False)
+        aff_mat[row_idx, ids] = vals
+    knn_aff = np.zeros((sample_num, sample_num), dtype=dtype)
+    directed_edges = set()
+    knn_top = min(args.k_num + 1, full_top)
+    for row_idx in range(sample_num):
+        for col_idx in top_ids[row_idx, :knn_top].tolist():
+            directed_edges.add(row_idx * sample_num + int(col_idx))
+    for row_idx in range(sample_num):
+        for col_idx in top_ids[row_idx, :knn_top].tolist():
+            col_idx = int(col_idx)
+            if col_idx * sample_num + row_idx in directed_edges:
+                knn_aff[row_idx, col_idx] = aff_mat[row_idx, col_idx]
+    if args.save_cache is not None:
+        np.savez_compressed(args.save_cache, aff_mat=aff_mat, knn_aff=knn_aff,
+                            graph_mode=args.graph_mode,
+                            sparse_full_topk=args.sparse_full_topk,
+                            k_num=args.k_num, gamma=args.gamma, dtype=args.dtype)
+    return aff_mat, knn_aff
+
+
 def load_cached_graph(args, sample_num: int):
     if args.cache_path is None:
         return None
@@ -151,6 +214,8 @@ def build_or_load_graph(args, all_feats: np.ndarray):
     cached = load_cached_graph(args, sample_num)
     if cached is not None:
         return cached
+    if args.graph_mode == 'sparse_topk':
+        return build_sparse_topk_graph(args, all_feats)
     if args.k_num <= 0 or args.k_num >= sample_num:
         raise ValueError('k-num should be in [1, sample_num - 1].')
     dtype = np.float32 if args.dtype == 'float32' else np.float64
@@ -185,11 +250,17 @@ def build_ranker(args, mdl_iput):
         if args.method == 'ihyrdp' else IGmfptPaper(base_ranker, args.topk, args.lambda_step)
 
 
+def resolve_used_query_num(query_limit, query_num: int) -> int:
+    if query_limit is None:
+        return query_num
+    used_query_num = min(query_limit, query_num)
+    if used_query_num <= 0:
+        raise ValueError('query-limit should be positive when provided.')
+    return used_query_num
+
+
 def run_ranker(args, ranker, query_num: int, sample_num: int):
-    if args.query_limit is None:
-        used_query_num = query_num
-    else:
-        used_query_num = min(args.query_limit, query_num)
+    used_query_num = resolve_used_query_num(args.query_limit, query_num)
     queries = [[idx] for idx in range(used_query_num)]
     if args.topk is None:
         args.topk = sample_num
@@ -198,6 +269,28 @@ def run_ranker(args, ranker, query_num: int, sample_num: int):
         rankings = ranker(queries, args.topk)
     else:
         rankings = ranker(queries)
+    return queries, rankings
+
+
+def run_baseline(args, query_f: np.ndarray, gallery_f: np.ndarray):
+    """Rank gallery images directly by normalized feature similarity."""
+    query_num = query_f.shape[0]
+    gallery_num = gallery_f.shape[0]
+    used_query_num = resolve_used_query_num(args.query_limit, query_num)
+    dtype = np.float32 if args.dtype == 'float32' else np.float64
+    query_norm = l2_normalize(query_f[:used_query_num]).astype(dtype, copy=False)
+    gallery_norm = l2_normalize(gallery_f).astype(dtype, copy=False)
+    gallery_t = gallery_norm.T
+    queries = [[idx] for idx in range(used_query_num)]
+    rankings = list()
+    for start in range(0, used_query_num, args.batch_size):
+        end = min(start + args.batch_size, used_query_num)
+        sim = query_norm[start:end].dot(gallery_t)
+        order = np.argsort(-sim, axis=1)
+        for row in order:
+            rankings.append((row + query_num).astype(int).tolist())
+        print('Baseline query rows', str(end) + '/' + str(used_query_num))
+    args.topk = gallery_num
     return queries, rankings
 
 
@@ -213,12 +306,22 @@ def print_summary(args, query_num: int, gallery_num: int, metrics: dict, ranking
         print('Query', idx, 'ranking preview:', rankings[idx][:20])
 
 
-def save_outputs(args, metrics: dict, rankings: list):
+def save_outputs(args, metrics: dict, rankings: list, query_num: int, gallery_num: int):
     if args.save_json is not None:
         out = {
             'method': args.method,
+            'mat_path': args.mat_path,
+            'query_num': query_num,
+            'gallery_num': gallery_num,
             'topk': args.topk,
             'eval_max_rank': args.eval_max_rank,
+            'query_limit': args.query_limit,
+            'batch_size': args.batch_size,
+            'dtype': args.dtype,
+            'cache_path': args.cache_path,
+            'save_cache': args.save_cache,
+            'graph_mode': args.graph_mode,
+            'sparse_full_topk': args.sparse_full_topk,
             'k_num': args.k_num,
             'gamma': args.gamma,
             'alpha': args.alpha,
@@ -227,6 +330,8 @@ def save_outputs(args, metrics: dict, rankings: list):
             'local_topk': args.local_topk,
             'metrics': metrics,
         }
+        if args.method == 'baseline':
+            out['distance'] = 'cosine_on_l2_normalized_features'
         with open(args.save_json, 'w', encoding='utf-8') as file_obj:
             json.dump(out, file_obj, indent=2)
     if args.save_rankings is not None:
@@ -236,9 +341,19 @@ def save_outputs(args, metrics: dict, rankings: list):
 def main():
     args = parse_args()
     query_f, gallery_f, query_pids, query_camids, gallery_pids, gallery_camids = load_reid_data(args)
-    all_feats = np.vstack([query_f, gallery_f])
     query_num = query_f.shape[0]
     gallery_num = gallery_f.shape[0]
+    if args.method == 'baseline':
+        query_wrappers, rankings = run_baseline(args, query_f, gallery_f)
+        query_ids = [tmp[0] for tmp in query_wrappers]
+        metrics = evaluate_reid_rankings(rankings=rankings, query_ids=query_ids,
+                                         query_pids=query_pids, query_camids=query_camids,
+                                         gallery_pids=gallery_pids, gallery_camids=gallery_camids,
+                                         gallery_offset=query_num, max_rank=args.eval_max_rank)
+        print_summary(args, query_num, gallery_num, metrics, rankings)
+        save_outputs(args, metrics, rankings, query_num, gallery_num)
+        return
+    all_feats = np.vstack([query_f, gallery_f])
     if args.topk is None:
         args.topk = all_feats.shape[0]
     args.topk = min(args.topk, all_feats.shape[0])
@@ -253,7 +368,7 @@ def main():
                                      gallery_pids=gallery_pids, gallery_camids=gallery_camids,
                                      gallery_offset=query_num, max_rank=args.eval_max_rank)
     print_summary(args, query_num, gallery_num, metrics, rankings)
-    save_outputs(args, metrics, rankings)
+    save_outputs(args, metrics, rankings, query_num, gallery_num)
 
 
 if __name__ == '__main__':

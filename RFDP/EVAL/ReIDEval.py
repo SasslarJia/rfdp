@@ -77,7 +77,9 @@ def _evaluate_one(gal_rank: np.ndarray, q_pid: int, q_cam: int, gallery_pids: np
     keep = np.invert(remove)
     matches = (order_pids[keep] == q_pid).astype(np.int32)
     if not np.any(matches):
-        return None, None, False
+        # A query with gallery positives remains valid even when a truncated
+        # ranking misses all of them (or only contains filtered entries).
+        return np.zeros(max_rank, dtype=float), 0.0, True
 
     cmc = matches.cumsum()
     cmc[cmc > 1] = 1
