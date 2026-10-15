@@ -1,0 +1,78 @@
+{
+  "experiment": "Duke full-query study 2026-10-15; camera model also used on Market1501",
+  "archive_sha256": "aafe2f8c9df37db0aa482777952b77517227a40a07683619906d355cc5bc44d8",
+  "base_git_commit": "52ece32f320f7e6d89eec3a433e01ba4232d119e",
+  "note": "Original experiment source hashes; CLI paths and integration were adapted. FullIHyRDP copied byte-for-byte. Synthetic equivalence checks accompany this port; archived full benchmarks were not rerun for the integration.",
+  "sources": [
+    {
+      "source": "source-tree/rfdp-complete-20261012/repo/RFDP/MODEL/Paper_RFDP/PaperFullIterative.py",
+      "source_sha256": "14e8903d75a925c53c07dbbfd0b5888c20ab9378fbbb98bb9c17d83d5f64c965",
+      "destination": "RFDP/MODEL/Paper_RFDP/PaperFullIterative.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/repo/RFDP/Test_RFDP/test_full_ihyrdp.py",
+      "source_sha256": "89d0c9a2a61a23421a4fe36d3e5e7126986f29b9f7859ab165c51dd38f1a8af7",
+      "destination": "RFDP/Test_RFDP/test_full_ihyrdp.py"
+    },
+    {
+      "source": "source-tree/rfdp-camera-full-20261014/camera_model.py",
+      "source_sha256": "cfc492b25347e06f87dce5db85c10284e341f44d17db830166e8900d8fbbb324",
+      "destination": "RFDP/MODEL/Paper_RFDP/PaperCamera.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/precision_solver.py",
+      "source_sha256": "67848e03bd1b446588155fcc12ea8fdbe84ba34f171a9cc369b89d412c952333",
+      "destination": "RFDP/MODEL/Paper_RFDP/PaperPrecision.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/controls/run_k_reciprocal.py",
+      "source_sha256": "5caf674c1909fa39b5d6f201bd28d014488a333ea78b830aefb4b076b46a775f",
+      "destination": "RFDP/experiments/full_reid/run_k_reciprocal.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/controls/run_classic_comparators.py",
+      "source_sha256": "74143986fc4b9fe60383c08d26a0a448c39fa0f3ded61a571d58669b4a505904",
+      "destination": "RFDP/experiments/full_reid/run_classic_comparators.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/controls/research/classic/upstream_metadata.json",
+      "source_sha256": "efbe8c853fef1b440497acd1299e8ac81f88a2e383248a4dd0f448797d969f90",
+      "destination": "RFDP/experiments/full_reid/research/classic/upstream_metadata.json"
+    },
+    {
+      "source": "extract.py",
+      "source_sha256": "f1f5f7eff6ee6a903aebeeac3a690986532a30b1b33b892fbc71fddc449a3d4e",
+      "destination": "RFDP/experiments/full_reid/extract_duke.py"
+    },
+    {
+      "source": "download-manifest.json",
+      "source_sha256": "ef3f27fd367b673e1a565899382e536caef5c264f6118161169891265879678e",
+      "destination": "RFDP/experiments/full_reid/duke-download-manifest.json"
+    },
+    {
+      "source": "PROTOCOL.md",
+      "source_sha256": "d63dc1454ec1a25bda6743471ee6a7fe3d1ed872ebc75eb4fd8eab63c9706c75",
+      "destination": "docs/experiments/duke-20261015-protocol.md"
+    },
+    {
+      "source": "../results-summary.csv",
+      "source_sha256": "50623ca598bf15c5d3b60aea3eaf00727c85a9652d89b00d60cba1a8dabbfae6",
+      "destination": "docs/experiments/duke-20261015-results.csv"
+    },
+    {
+      "source": "run_study.py",
+      "source_sha256": "716d6938e7831b10cf284d6c1257b925cf35c7f146d2e37bbf2a3011463ec781",
+      "destination": "RFDP/experiments/full_reid/run_full.py"
+    },
+    {
+      "source": "verify.py",
+      "source_sha256": "2e62509f6fb72e9952c18735de7fbb52a707f430fdc8e34cb3df9c6e119bd2e9",
+      "destination": "RFDP/experiments/full_reid/verify_full.py"
+    },
+    {
+      "source": "source-tree/rfdp-complete-20261012/build_feature_cache.py",
+      "source_sha256": "13307033fbd2a301dfac64f72b31cffcd939ee5e1792545631b7675c5d5c7cd0",
+      "destination": "RFDP/experiments/full_reid/build_feature_cache.py"
+    }
+  ]
+}

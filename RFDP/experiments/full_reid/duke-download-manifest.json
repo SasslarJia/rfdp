@@ -1,0 +1,20 @@
+{
+  "dataset_url": "https://huggingface.co/datasets/tuandunghcmut/MyPublicStorage/resolve/c1a5756/DukeMTMC-reID.zip",
+  "dataset_sha256": "932ae18937b6a77bc59846d4fb00da4ee02cdda93329ca0537ad899a569e3505",
+  "weights_source": "https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO",
+  "weights_urls": {
+    "resnet50": "https://drive.google.com/file/d/17ymnLglnc64NRvGOitY3BqMRS9UWd1wg/view",
+    "osnet": "https://drive.google.com/file/d/1QZO_4sNf4hdOKKKzKc-TZU9WW1v6zQbq/view"
+  },
+  "asset_hashes": {
+    "DukeMTMC-reID.zip": "932ae18937b6a77bc59846d4fb00da4ee02cdda93329ca0537ad899a569e3505",
+    "osnet-duke.pth": "f2d2f49e337432fe9c373e55aa124450df08ab0743a1282c60a0deee289f7725",
+    "resnet50-duke.pth.tar": "68c8b45289ad5384d47698b29e0448c232037cc88bdaf6e7b3b849e596b919a0",
+    "resnet.py": "6b871338b477421bbc23bc7b3028735fc67ab4f551d979c5ae8b2edf2d02c168"
+  },
+  "raw_zip_counts_include_macos_resource_forks": {
+    "query": 4456,
+    "bounding_box_test": 35322,
+    "bounding_box_train": 33044
+  }
+}

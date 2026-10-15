@@ -1,0 +1,49 @@
+{
+  "ecn": {
+    "commit": "3d17edfb83668acd727cc7917d599656008be53d",
+    "remote": "https://github.com/pse-ecn/expanded-cross-neighborhood.git",
+    "date": "2020-05-14T16:53:25+02:00",
+    "files": {
+      "evalECNRerankingForFeatures.m": "c1348138e2ba8bea833c8e3a0b7e8cb04b597d5ed5ffb5d22abbb5b9b52a5003",
+      "evalECNRerankingForPath.m": "c245c1d79f41ec61a0b206e718eb32f764fdfe0cd5fdb6f1c4fa4be654ad9849",
+      "README.md": "1b979c8a1b67ce1fd63e4e52ffccd6409d4b186071495b24f65c832e083d09f8",
+      ".gitattributes": "7f83a2432e9471a82d5b24b9f99ba9042b7acb4103e05e9f4222a133ac635ba8",
+      "ECN_rerank.m": "8cdfd6f7a3512ecc7d0b6e38e71b5260ca6fb272cd1fa5aee388749fce069bbc",
+      "ecn.py": "9103d9467eb843f0860af89b79a02f46072ceab46259f366bad1c01b9c03a4aa",
+      "evaluation/evaluate_person_reid.py": "412ed4edc4718f7deb41966c494e691a83ef39c80d344a6ee84d956da8733e71",
+      "evaluation/evaluation.m": "5fdbd2d67f657ee319de832bcb442f879e0bf94a9d0c95e6a243249a43896b91",
+      "evaluation/compute_AP.m": "262b575ddf0c5b53f3c291751e29de97c213c08fc2b235ecd35e6c767724bcd1"
+    }
+  },
+  "gcr": {
+    "commit": "697409c4de4f7dc185d93837df468f2dee556c29",
+    "remote": "https://github.com/WesleyZhang1991/GCN_rerank.git",
+    "date": "2023-04-18T13:35:31+08:00",
+    "files": {
+      "LICENSE": "29dd703a2b97215b003042c8e7be2724c7c2d884a9100427a6b76242fc14badd",
+      "gcrv.py": "ae58cde64e98cd6690db0c5970a17dab1b4a3c283a659e0f93e9fb0fea7e03c9",
+      "lbr.py": "81d920b2b9ae9ac7c3fac52d4fcc63c9c8d9f31aef6548cd31b5b9fc63ccde1f",
+      "README.md": "1ad29cde031904ed943c64d521641ecaa9f386c0bc45f2de57cd20735ca0cfbd",
+      "eval_rerank.py": "ed4c4e387b353061aa63c1f23598ddbc92d3038d91ee3f454219f8fe994f855a",
+      "ecn.py": "0597d98a5b0a8e5890aa654bfcfb54d07f37cdd5a37e641f34f0d09a5e3bfd04",
+      "qe.py": "2ffe8d3d9a6c53d3507e6d45d7ef8261ef023a038c5acf598a71d4f51799de71",
+      "config/market.yml": "bcef900758a5adb0389fd762e1f4b4743182656495d470c09263301a70b82e92",
+      "config/__init__.py": "f0276068427de54c72e06103a78d79a33f375bb3c88291c6bd9642971200635f",
+      "config/duke.yml": "386eddcfc38664612c451a95979e92d8e7110f150494e96f51b240b4e52131f9",
+      "config/defaults.py": "c05881781a394f7ef8f0711484fce6795180e4feecda8bf2a868830b8246473a",
+      "config/mars.yml": "7c5f3313872636296c2bbbca4af07d8ac3e42ae71936e6fd933bcf608d60a40c",
+      "utils/misc.py": "22e6d3e49b71bf1899a1a74774b4e14ba766569684bba6b95538f9d2eef98a84",
+      "utils/evaluation.py": "0da0e37b122e8fd785776413ab999a4870fb0dcdb1c6bcc54a1c67d4d1e0fc34",
+      "utils/io.py": "6f4bac27e434e04b793979c13ada8d3a5b7e96e50d7250dd8981e9a6e10b1e27",
+      "utils/cmc.py": "eb1f7f373f3569db329d057d5a0f0223b923e55b10cfc182d4955e03af6c3a2c"
+    }
+  },
+  "gnn": {
+    "commit": "663a58029d4ca90a01ba6ed8e04daa14c289ffb7",
+    "remote": "https://github.com/Xuanmeng-Zhang/gnn-re-ranking.git",
+    "date": "2021-03-03T16:54:44+08:00",
+    "files": {
+      "README.md": "a14b9301c632e48195133e54630ac39a7c2220c9620fd468c44e8f903e11983b"
+    }
+  }
+}

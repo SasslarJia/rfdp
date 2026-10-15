@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.DS_Store
+.idea/
+RFDP/RfdpLog/logs/
+*.mat
+*.npy
+*.npz
+*.pth
+*.pth.tar
+*.zip
+*.tar.gz
+runs/
+# Retrieved pinned upstream implementations; fetch_controls.py verifies hashes.
+RFDP/experiments/full_reid/re_ranking_ranklist.py
+RFDP/experiments/full_reid/research/classic/ecn/
+RFDP/experiments/full_reid/research/classic/gcr/

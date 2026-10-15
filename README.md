@@ -4,9 +4,19 @@
 
 当前推荐主线是 `RFDP/MODEL/Paper_RFDP/`。仓库中仍保留旧版通用 RFDP 框架 `RFDP/MODEL/Frmwk_RFDP/`，但它主要用于历史兼容和早期实验，不建议作为论文复现或 ReID 实验的主入口。
 
+## 当前报告实验入口（2026-10-15）
+
+动态 I-HyRDP 和相机结构加权 **CSW+I-HyRDP** 的实际实现已同步，入口为
+`RFDP/experiments/full_reid/run_full.py`。支持全部查询/完整图库、逐查询断点续跑、
+固定版本 KR/ECN 对照及独立指标复算。相机权重在构图与桥接阶段生效。
+
+详见 [完整复现步骤](docs/FULL_REID_REPRODUCTION.md) 和
+[原实验源码校验记录](docs/experiments/source-provenance.json)。下文保留早期
+`Test_RFDP` 入口的说明；其中 `local-topk` 配置不是当前报告的动态全图流程。
+
 ## 1. 项目定位
 
-仓库不负责 CNN 训练，也不直接从图像抽特征。它默认上游已经给出样本间关系，或者给出可转成关系矩阵的特征，例如：
+仓库不负责 CNN 训练，提供冻结权重的特征导出脚本。重排序模块接收上游样本关系或特征，例如：
 
 - ReID 网络导出的 `query_f / gallery_f`。
 - 全量欧氏距离矩阵 `all_dists`。
