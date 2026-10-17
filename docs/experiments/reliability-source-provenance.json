@@ -1,0 +1,127 @@
+{
+  "historical_base_commit": "4072813",
+  "sources": [
+    {
+      "file": "RFDP/experiments/reliability/reliability_model.py",
+      "origin": "v2-source/reliability_model.py",
+      "sha256": "67feab0e19d8052c51f9680a99cfd8e40b2cb95453016777a5cd19ee1cfa8b40",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/high_precision_recovery.py",
+      "origin": "v2-source/high_precision_recovery.py",
+      "sha256": "ebcd958e1eb62f4ef11fbac2fbad8e064c82bde2da481fb9933d701fc7dc8fa6",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/run_candidate.py",
+      "origin": "v2-source/run_candidate.py",
+      "sha256": "547611f10eccdcfdeec9546eeb104fbf5a77092e2034446a965947456ca7e353",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/verify_experiment.py",
+      "origin": "v2-source/verify_experiment.py",
+      "sha256": "872367b430feafbdf7361d0550559ab193572e87e249e9a7886a90baa8a12deb",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/verify_numerics.py",
+      "origin": "v2-source/verify_numerics.py",
+      "sha256": "4cf9c7a3408919856ea938d775bb3b6f9ac3d5f5fc17b62ae4fae28e735888ec",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/prepare_dev_features.py",
+      "origin": "v2-source/prepare_dev_features.py",
+      "sha256": "d1ab46545bd87bc43ce9896031cfc306d3125b30d25aac82e9a68aa19e918d32",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/test_reliability_model.py",
+      "origin": "v2-source/test_reliability_model.py",
+      "sha256": "d222d3f7bf9b432b35cefa5f0f8ff67399815034ba252870a612a1396414a6ae",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/test_high_precision_recovery.py",
+      "origin": "v2-source/test_high_precision_recovery.py",
+      "sha256": "57c65a098e48a77740c36a7962a90b778da0b4566930fcbbbf7dd3ee5de28200",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/test_prepare_dev_features.py",
+      "origin": "v2-source/test_prepare_dev_features.py",
+      "sha256": "ec4f36330288d547c8d17b4e9eb8e9afb6431135c2e2ec9c069f029cfe6e9bff",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/synthetic_integration.py",
+      "origin": "v2-source/synthetic_integration.py",
+      "sha256": "6a97e6c9f39a4526f11d8ee374e8736d2be24c2fe610a2bb524585a3dfcaeb78",
+      "payload": "Only synthetic-check repository/output path defaults adapted for portable checkout; model/runner/verifiers unchanged",
+      "original_sha256": "6b570feca245bcc2e3b83c24d8957df275c50618c32c4d1472d0eba498b58e5c"
+    },
+    {
+      "file": "RFDP/experiments/reliability/input_binding.py",
+      "origin": "uniform-source/input_binding.py",
+      "sha256": "304f15d9345dad925ce716d2707abb66bcc81470a038223c18ceb3391efd45c4",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/plan_uniform_suite.py",
+      "origin": "uniform-source/plan_uniform_suite.py",
+      "sha256": "71677def474c88161de4ad537c57fab2aa6eeecd9dae33463ede27ffbf1474ff",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/run_candidate_v2.py",
+      "origin": "uniform-source/run_candidate_v2.py",
+      "sha256": "547611f10eccdcfdeec9546eeb104fbf5a77092e2034446a965947456ca7e353",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/run_uniform_candidate.py",
+      "origin": "uniform-source/run_uniform_candidate.py",
+      "sha256": "83a691d8acf22047a8e76932be5d15ac3cb70cd843002578d0ccef030313baf0",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/uniform_control.py",
+      "origin": "uniform-source/uniform_control.py",
+      "sha256": "a81ce302cc713dc6967c55918362cf7113483b57257d29a23aae6e834596cd50",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/verify_uniform_control.py",
+      "origin": "uniform-source/verify_uniform_control.py",
+      "sha256": "d49ebc1a3104e8b8a2ac74689b484103f9437382ebbcb547b1774bfcfde2da31",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/synthetic_force_mp.py",
+      "origin": "uniform-source/synthetic_force_mp.py",
+      "sha256": "9351d93e8390de119f31520e1ba1f66cc064141371a8943c33a6b042f56a1279",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/synthetic_uniform_integration.py",
+      "origin": "uniform-source/synthetic_uniform_integration.py",
+      "sha256": "44a955865b98fe5271e5fc403461cfb7728b82507c2aa57862d4dfbc22878ec7",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/synthetic_v2_helpers.py",
+      "origin": "uniform-source/synthetic_v2_helpers.py",
+      "sha256": "6b570feca245bcc2e3b83c24d8957df275c50618c32c4d1472d0eba498b58e5c",
+      "payload": "unchanged verified experiment source"
+    },
+    {
+      "file": "RFDP/experiments/reliability/test_plan_uniform_suite.py",
+      "origin": "uniform-source/test_plan_uniform_suite.py",
+      "sha256": "dfbe47d380bebeedb7fffe60f9396d517636ceafb5758f16061a661d36f28c1d",
+      "payload": "unchanged verified experiment source"
+    }
+  ],
+  "note": "Deployment-specific remote scripts are retained in experiment archives, not installed as entry points. Source hashes are frozen evidence; new run manifests bind the current checkout."
+}

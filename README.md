@@ -4,6 +4,16 @@
 
 当前推荐主线是 `RFDP/MODEL/Paper_RFDP/`。仓库中仍保留旧版通用 RFDP 框架 `RFDP/MODEL/Frmwk_RFDP/`，但它主要用于历史兼容和早期实验，不建议作为论文复现或 ReID 实验的主入口。
 
+## 关系支持统一模型（2026-10-17）
+
+当前报告的 **CSW+I-HyRDP** 同时包含相机类别先验和 ordinary 共同邻域支持。
+已验收的模型、逐查询运行入口、独立指标/数值验证、均匀质量控制和测试已同步到
+`RFDP/experiments/reliability/`。固定 `rho=0.5, lam=0.25, depth=500`；
+`lam` 对应报告中的关系门控强度 η，不是在线学习参数。
+
+参见 [统一模型运行说明](RFDP/experiments/reliability/README.md)。下方旧入口仍可复现
+仅相机加权组件，不能单独生成包含共同邻域支持的当前完整结果。
+
 ## 当前报告实验入口（2026-10-15）
 
 动态 I-HyRDP 和相机结构加权 **CSW+I-HyRDP** 的实际实现已同步，入口为
