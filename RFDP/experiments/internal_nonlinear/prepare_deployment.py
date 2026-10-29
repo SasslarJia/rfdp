@@ -6,6 +6,25 @@ import shutil
 from pathlib import Path
 
 
+def verify_frozen_repository(repo_root, references):
+    """A cleaned working tree is not a replacement for a frozen run's inputs."""
+    prefix = references['repo'].rstrip('/') + '/'
+    mismatches = []
+    for original, expected in references['locked_files'].items():
+        if not original.startswith(prefix):
+            continue
+        relative = original[len(prefix):]
+        path = repo_root / relative
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            mismatches.append(relative)
+    if mismatches:
+        raise ValueError(
+            'Frozen repository references differ: ' + ', '.join(mismatches)
+            + '. Use a separate checkout of 5e5ec194ef362c9bf179d73f8bd6ea0a10d71601 '
+              'for --repo-root; do not rewrite the historical reference hashes.'
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime-root', required=True, type=Path)
@@ -19,6 +38,8 @@ def main():
     target = root / 'internal-nonlinear-smoothing-v1-20261028'
     if target.exists():
         raise FileExistsError('Export into a new location; do not overwrite a running deployment')
+    references = json.loads((here / 'model/population-adaptive-v2/references.json').read_text())
+    verify_frozen_repository(args.repo_root.resolve(), references)
     original_inputs = json.loads((here / 'model/population-adaptive-v2/analysis-inputs.json').read_text())
     mapping = {
         '/root/autodl-tmp/rfdp-graph-routes-20261026': str(root),

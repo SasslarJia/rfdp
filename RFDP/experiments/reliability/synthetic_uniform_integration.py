@@ -116,7 +116,7 @@ def main():
                 checks['forced-MP-exact-certificate-and-controlled-equation']=True
             outcomes.append(dict(mode=mode,source_lambda=lam,forced_test_fallback=forced,output=str(out),control_report_sha256=sha(out/'verified-uniform-control.json'),qbar=report['qbar'],effective_lambda=report['effective_lambda'],bridge_events=report['independently_checked_bridge_events'],mp_events=report['mp_systems_rebound_to_controlled_graph']))
         baseline=root/'csw-baseline';method='synthetic-csw-lam0'
-        stage('csw-lam0-run',[sys.executable,'-B',source/'run_candidate_v2.py',*common,'--output-dir',baseline,'--method',method,'--lam','0'])
+        stage('csw-lam0-run',[sys.executable,'-B',source/'run_candidate.py',*common,'--output-dir',baseline,'--method',method,'--lam','0'])
         stage('csw-lam0-standard',[sys.executable,'-B',source/'verify_experiment.py','--mat-path',mat,'--output-dir',baseline,'--method',method,'--protocol',protocol,'--expected-queries',str(QUERY_COUNT),'--expected-gallery',str(GALLERY_COUNT),'--depth','70','--progress-every','0'])
         stage('csw-lam0-numerical',[sys.executable,'-B',source/'verify_numerics.py','--output-dir',baseline,'--method',method])
         reference=np.load(baseline/f'{method}.rankings.npy')

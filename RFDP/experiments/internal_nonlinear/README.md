@@ -12,7 +12,7 @@ This directory on GitHub branch `test` is the source of truth for the current ex
 
 The model uses theta=0.5; each stage's delta is the original hybrid solution's weighted RMS edge difference, enclosed by interval arithmetic and held fixed during that solve. Original graph, fitting, seed and bridge rules remain unchanged. See [derivation](model/theory-explanation-20261028.md). Market settings are alpha=5, beta=25, step=5, depth=500, k=20, gamma=0.4, 3368 queries and 19732 gallery images. Production uses 16 workers and one BLAS thread each.
 
-The current server deployment's adaptive lock is `ef6dba0cfb638fa24755e72ebefb760f63b69b56f4d2300591679e4f56581bb0`. Its nine source/config files and seven dependencies are copied byte-for-byte here. Existing repository core files also match all deployed reference hashes. The test harness below uses repository-relative paths.
+The current server deployment's adaptive lock is `ef6dba0cfb638fa24755e72ebefb760f63b69b56f4d2300591679e4f56581bb0`. Its nine source/config files and seven dependencies are copied byte-for-byte here. The complete frozen repository references match Git commit `5e5ec194ef362c9bf179d73f8bd6ea0a10d71601`. The cleaned current tree removes unused historical files included in that manifest, so it must not replace the frozen checkout in an audit or resumed deployment. The test harness below uses repository-relative paths.
 
 ## Correctness checks
 
@@ -27,7 +27,7 @@ These check certified selections, exact and near ties, precision escalation, ori
 
 ## Deployment
 
-The source/config snapshots retain the original deployment paths so the current run is exactly traceable. For another machine, export with explicit paths:
+The source/config snapshots retain the original deployment paths so the current run is exactly traceable. For another machine, use a separate checkout of `5e5ec194ef362c9bf179d73f8bd6ea0a10d71601` as `--repo-root`, then export with explicit paths. The exporter checks all 60 frozen repository references before writing:
 
 ```bash
 python RFDP/experiments/internal_nonlinear/prepare_deployment.py \
@@ -61,3 +61,5 @@ Three completed adaptive traces expose the following existing timers. All their 
 The last column is `solver_total / (solver_total - candidate_time)`, an optimistic bound for accelerating **only candidate generation**. It is not a measured GPU result or a limit on implementations that also accelerate other work. GPU transfer, precision and launch costs can reduce the attainable gain. Porting the candidate solver alone does not resolve this implementation's overall cost.
 
 The next internal-theory investigation should preserve a quadratic objective and a linear solve at each original stage, with GPU-compatible numerical operations. Avoid adding nonlinear Newton iterations or another original solve solely to define a scale. First derive the mechanism, solvability and computational cost; then implement the selected hypothesis and run the formal comparison. This is a design constraint, not an already validated replacement model or an accuracy promise. Do not revive stopped graph-calibration, frontier or depth modifications under a new name. The current objective and correctness thresholds remain unchanged in the preserved implementation.
+
+The current candidate is documented separately in [continuous fitting](../continuous_fitting/README.md). It changes the fitting source while retaining the original matrix. It has mathematical checks only and does not alter this preserved nonlinear run.

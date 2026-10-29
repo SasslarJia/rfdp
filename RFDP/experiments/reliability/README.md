@@ -3,8 +3,8 @@
 This directory preserves the verified relation-support implementation used in
 the current report. It extends camera weighting with **ordinary shared reciprocal
 neighbour support**. It does not train a network, learn parameters online, or fuse
-rankings with RRF. Core model/runner/verifiers are unchanged copies of the verified
-experiment sources; provenance is in `docs/experiments/reliability-source-provenance.json`.
+rankings with RRF. The model and verifiers retain the verified equations. Historical source
+provenance is in `docs/experiments/reliability-source-provenance.json`.
 
 ## Model and parameters
 
@@ -52,8 +52,10 @@ must be verified with their frozen sources/path mappings, not rewritten manifest
 The control matches **global sparse off-diagonal mass**, keeps the diagonal, and
 does not match each row or every local boundary. `plan_uniform_suite.py --help`
 describes the required frozen selection, input hashes, caches and protocol.
-The sibling `run_candidate_v2.py` is the frozen helper expected by this control;
-it is byte-identical to the historical core runner, not a different method.
+The control imports the canonical `run_candidate.py`; its byte-identical duplicate
+was removed. Historical artifacts retain their original source fingerprints and
+must be audited with the corresponding Git revision (before this cleanup), not
+with rewritten manifests. The provenance JSON is a historical record.
 
 ## Software checks (no real benchmark claim)
 

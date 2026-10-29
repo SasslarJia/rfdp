@@ -18,7 +18,7 @@ import time
 import numpy as np
 import mpmath
 from scipy import sparse
-import run_candidate_v2 as core
+import run_candidate as core
 from high_precision_recovery import SOLVER_ID
 
 
