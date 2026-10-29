@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "tests": 7,
+  "arithmetic": "exact Python Fraction, no tolerance",
+  "command": "python3 -m unittest RFDP/Test_RFDP/test_stationary_refinement.py -v",
+  "scope": "fixed-frontier algebra; no new retrieval/performance qualification",
+  "production_changed": false
+}

@@ -2,7 +2,7 @@
 
 Status: full Market population accepted. mAP 93.174274% and Rank-1 95.249406%, respectively +0.039372 and +0.089074 percentage points against original I-HyRDP. Both query- and identity-paired 95% intervals cross zero. This is a development point gain, not an established stable gain or mechanism-specific Rank-1 advantage. See result.json. Retain the candidate; the bounded degree-response review is complete (diagnosis.json, reflection.md), with a pronounced preference for higher-degree nodes and both beneficial and harmful early margin changes; the fixed experimental success criteria are unchanged.
 
-The experiment key is `stationary_measure`. This is one replacement of the fitting measure/coordinate convention, not a graph change, an additional indirect anchor, or post-hoc score division.
+The experiment key is `stationary_measure`. This is one replacement of the fitting measure/coordinate convention, not a graph change, an additional indirect anchor, or post-hoc score division. The completed [coordinate and refinement audit](equivalence-and-refinement.md) distinguishes it from the original normalized equation and GMFPT, and proves fixed-frontier score consistency under a specified mass-preserving refinement. Seven exact rational checks pass. The next fixed [feature-transfer protocol](transfer-protocol.md) evaluates the same model on the existing Market TransReID representation; it does not test arbitrary duplicate-photo robustness.
 
 ## Objective and implementation
 

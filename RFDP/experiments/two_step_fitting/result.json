@@ -128,5 +128,22 @@
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json": "666ff0c557f5eba901c1b0d18b0355c68e8677500acd8c8d82421e0eef5cdcbf",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json": "926bea558d9431f1d2f6245d5a5882674b0a77d5e11efc04f079c42d9f5afa1a"
   },
-  "rankings_sha256": "72ebf908e2ddaa1fdf5c686e23d80caa1d788a5cd55342e61588bc17b55ffd17"
+  "rankings_sha256": "72ebf908e2ddaa1fdf5c686e23d80caa1d788a5cd55342e61588bc17b55ffd17",
+  "trace_retention": {
+    "status": "removed_after_acceptance_and_diagnosis",
+    "time": "2026-10-29T22:21:45.744203+08:00",
+    "count": 3368,
+    "freed_allocated_bytes": 10070556672,
+    "server_receipt": "/root/autodl-tmp/rfdp-graph-routes-20261026/two-step-trace-cleanup.json",
+    "full_saved_score_readback_still_possible": false,
+    "retained": [
+      "results",
+      "ranks",
+      "prefixes",
+      "metadata",
+      "diagnosis",
+      "code",
+      "v1 failure"
+    ]
+  }
 }
