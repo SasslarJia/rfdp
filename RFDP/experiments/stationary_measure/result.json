@@ -100,7 +100,7 @@
   },
   "acceptance": {
     "solver_calls": 336788,
-    "max_recomputed_residual": 1.0248360382547621e-9,
+    "max_recomputed_residual": 1.0248360382547621e-09,
     "max_local_nodes": 6391,
     "bridge_queries": 17,
     "numerical_tail_total": 0,
@@ -129,5 +129,14 @@
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json": "666ff0c557f5eba901c1b0d18b0355c68e8677500acd8c8d82421e0eef5cdcbf",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json": "926bea558d9431f1d2f6245d5a5882674b0a77d5e11efc04f079c42d9f5afa1a"
   },
-  "rankings_sha256": "c8c3b68c08911908ea194acf63b53ae7c29a72b8cebef34061438a7cd75a6d6b"
+  "rankings_sha256": "c8c3b68c08911908ea194acf63b53ae7c29a72b8cebef34061438a7cd75a6d6b",
+  "mechanism_review": {
+    "status": "bounded_post_hoc_completed",
+    "code_commit": "090a046266c5fe32d94f56c5db3e4d6ebcd98c12",
+    "new_response_tests": 2,
+    "exit_code": 0,
+    "summary": "diagnosis.json",
+    "interpretation": "reflection.md",
+    "summary_sha256": "48fa4ae2e4006b84da3a637e3e6137437390dbaa4b14297b6bf7f48fea263152"
+  }
 }

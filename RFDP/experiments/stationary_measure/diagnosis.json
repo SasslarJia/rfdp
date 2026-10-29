@@ -1,0 +1,374 @@
+{
+  "time": "2026-10-29T21:31:12.493690+08:00",
+  "model": "stationary_measure",
+  "scope": "All queries; at most five common batches, stop at first ordered divergence.",
+  "post_hoc": true,
+  "causal_claim": false,
+  "original_full_trajectory_reconstructed": false,
+  "float_diagnostics_not_certificates": true,
+  "max_response_closure": 8.258947469530752e-13,
+  "groups": {
+    "all": {
+      "queries": 3368,
+      "diverged_within_first_five": 3127,
+      "ordered_divergence_histogram": {
+        "0": 1625,
+        "1": 719,
+        "2": 398,
+        "3": 233,
+        "4": 152
+      },
+      "changed_sets": 1833,
+      "swaps": {
+        "removed": {
+          "count": 2279,
+          "gallery_positive": 1381,
+          "degree_percentile_quantiles": [
+            0.03389830508474576,
+            0.29562352941176473,
+            0.5961538461538461,
+            0.8216288384512686,
+            0.9609607627429404,
+            0.9964664310954063
+          ]
+        },
+        "added": {
+          "count": 2279,
+          "gallery_positive": 1095,
+          "degree_percentile_quantiles": [
+            0.01639344262295082,
+            0.7140756302521009,
+            0.9221311475409836,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.029716602181098825,
+        0.0989743624462011,
+        0.1414724544700978,
+        0.1885819149694334,
+        0.23773523293429297,
+        0.30344192094380656
+      ],
+      "first_score_relative_change_quantiles": [
+        9.103554039970182e-05,
+        0.008751804564435743,
+        0.03844478737489576,
+        0.07448413393173668,
+        0.10363054532390885,
+        0.13143002387741778
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 3075,
+        "positive_to_negative": 2,
+        "negative_to_positive": 9,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    },
+    "AP_up": {
+      "queries": 304,
+      "diverged_within_first_five": 281,
+      "ordered_divergence_histogram": {
+        "0": 136,
+        "1": 79,
+        "2": 33,
+        "3": 19,
+        "4": 14
+      },
+      "changed_sets": 177,
+      "swaps": {
+        "removed": {
+          "count": 230,
+          "gallery_positive": 115,
+          "degree_percentile_quantiles": [
+            0.1111111111111111,
+            0.35410521681708124,
+            0.5898670645686381,
+            0.8049753502854178,
+            0.9609095860566449,
+            0.978021978021978
+          ]
+        },
+        "added": {
+          "count": 230,
+          "gallery_positive": 107,
+          "degree_percentile_quantiles": [
+            0.15,
+            0.7681300813008131,
+            0.9252271139063593,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.03018668273546048,
+        0.09795288724723512,
+        0.13452278921567146,
+        0.17753814809732943,
+        0.20013222261290792,
+        0.22674889557373304
+      ],
+      "first_score_relative_change_quantiles": [
+        0.0006674205125779258,
+        0.015651519863129206,
+        0.045274434497926494,
+        0.07386215729543999,
+        0.0909101629158867,
+        0.09688137152067688
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 289,
+        "positive_to_negative": 0,
+        "negative_to_positive": 6,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    },
+    "AP_down": {
+      "queries": 255,
+      "diverged_within_first_five": 238,
+      "ordered_divergence_histogram": {
+        "0": 132,
+        "1": 48,
+        "2": 31,
+        "3": 19,
+        "4": 8
+      },
+      "changed_sets": 148,
+      "swaps": {
+        "removed": {
+          "count": 181,
+          "gallery_positive": 84,
+          "degree_percentile_quantiles": [
+            0.13953488372093023,
+            0.3076923076923077,
+            0.5675675675675675,
+            0.813953488372093,
+            0.9512533875338753,
+            0.9652777777777778
+          ]
+        },
+        "added": {
+          "count": 181,
+          "gallery_positive": 64,
+          "degree_percentile_quantiles": [
+            0.01639344262295082,
+            0.6530612244897959,
+            0.9175257731958762,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.050160380266062364,
+        0.085441186973483,
+        0.13054245598923206,
+        0.17190767573821264,
+        0.21024273142077693,
+        0.23881607122627607
+      ],
+      "first_score_relative_change_quantiles": [
+        0.0013607710636214982,
+        0.0170331576071946,
+        0.04454086928817299,
+        0.07260820759195132,
+        0.09480245620264069,
+        0.1078040444457902
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 241,
+        "positive_to_negative": 2,
+        "negative_to_positive": 2,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    },
+    "AP_same": {
+      "queries": 2809,
+      "diverged_within_first_five": 2608,
+      "ordered_divergence_histogram": {
+        "0": 1357,
+        "1": 592,
+        "2": 334,
+        "3": 195,
+        "4": 130
+      },
+      "changed_sets": 1508,
+      "swaps": {
+        "removed": {
+          "count": 1868,
+          "gallery_positive": 1182,
+          "degree_percentile_quantiles": [
+            0.03389830508474576,
+            0.289163306451613,
+            0.6038824113123294,
+            0.8262608695652174,
+            0.962465346534653,
+            0.9964664310954063
+          ]
+        },
+        "added": {
+          "count": 1868,
+          "gallery_positive": 924,
+          "degree_percentile_quantiles": [
+            0.10377358490566038,
+            0.715952380952381,
+            0.9221766848816029,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.029716602181098825,
+        0.10111350092108998,
+        0.14381169872130312,
+        0.19093179537828636,
+        0.2416976012856741,
+        0.30344192094380656
+      ],
+      "first_score_relative_change_quantiles": [
+        9.103554039970182e-05,
+        0.007888141168919246,
+        0.03708073833541367,
+        0.07481453640824617,
+        0.1050234153043804,
+        0.13143002387741778
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 2545,
+        "positive_to_negative": 0,
+        "negative_to_positive": 1,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    },
+    "rank1_gained": {
+      "queries": 6,
+      "diverged_within_first_five": 6,
+      "ordered_divergence_histogram": {
+        "0": 6,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      },
+      "changed_sets": 3,
+      "swaps": {
+        "removed": {
+          "count": 4,
+          "gallery_positive": 0,
+          "degree_percentile_quantiles": [
+            0.4015748031496063,
+            0.45376423270832156,
+            0.6397434683831882,
+            0.7177631578947369,
+            0.7230921052631579,
+            0.7236842105263158
+          ]
+        },
+        "added": {
+          "count": 4,
+          "gallery_positive": 3,
+          "degree_percentile_quantiles": [
+            0.841726618705036,
+            0.8635507383566831,
+            0.9177631578947368,
+            0.9322213012847078,
+            0.936529216742644,
+            0.937007874015748
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.11420664180371712,
+        0.11713509806079034,
+        0.1631844272639314,
+        0.1920837160381732,
+        0.19381041930127216,
+        0.19400227521939425
+      ],
+      "first_score_relative_change_quantiles": [
+        0.028012345986752125,
+        0.03458489695433581,
+        0.05407285805510382,
+        0.0693328400608561,
+        0.07635858361404792,
+        0.07713922178662479
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 6,
+        "positive_to_negative": 0,
+        "negative_to_positive": 6,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    },
+    "rank1_lost": {
+      "queries": 3,
+      "diverged_within_first_five": 3,
+      "ordered_divergence_histogram": {
+        "0": 3,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0
+      },
+      "changed_sets": 3,
+      "swaps": {
+        "removed": {
+          "count": 3,
+          "gallery_positive": 2,
+          "degree_percentile_quantiles": [
+            0.43902439024390244,
+            0.4427449359239355,
+            0.4576271186440678,
+            0.4772397094430993,
+            0.48165254237288135,
+            0.48214285714285715
+          ]
+        },
+        "added": {
+          "count": 3,
+          "gallery_positive": 2,
+          "degree_percentile_quantiles": [
+            0.5487804878048781,
+            0.5983464241422075,
+            0.7966101694915254,
+            0.8736077481840194,
+            0.8909322033898306,
+            0.8928571428571429
+          ]
+        }
+      },
+      "first_log_degree_std_quantiles": [
+        0.06088937423410312,
+        0.07095622223393666,
+        0.11122361423327083,
+        0.1537676546806186,
+        0.16334006378127183,
+        0.16440366479245552
+      ],
+      "first_score_relative_change_quantiles": [
+        0.01983963715584137,
+        0.02209691504043457,
+        0.031126026578807375,
+        0.06702675895895592,
+        0.07510442374448933,
+        0.07600194205399305
+      ],
+      "first_local_gallery_margin": {
+        "eligible_queries": 3,
+        "positive_to_negative": 2,
+        "negative_to_positive": 0,
+        "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+      }
+    }
+  },
+  "accepted_run_sha256": "6415b36dea04eb2ab44de0a50877c37d33cc395cb750d484d62cb1df6f91aa3d",
+  "query_details_sha256": "a5d2dab8b63835c6956513d079e4d9eb5f4940f7fdc1992324c7dc6ec12ba38f"
+}
