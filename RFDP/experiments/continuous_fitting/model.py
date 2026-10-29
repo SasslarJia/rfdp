@@ -52,6 +52,14 @@ def assemble_system(w_uu, e_u, alpha=5., beta=25., source='continuous'):
         # boundary/internal mass e/h. No graph weights or indirect term change.
         matrix = (sparse.diags(1. + alpha * e / h) - normalized).tocsr()
         rhs = np.where(e > 0, alpha * (h + e) / h, beta)
+    elif source == 'two_step_fitting':
+        # For B (e=0), q=P(T_seeds=2)=sum_j W_ij*p_j/h_i.
+        # A failed two-step trial resets to i: E[T_reset]=2/q.
+        # Add beta*q/4*(psi-2/q)^2, whose linear source is still beta.
+        q = np.asarray(w @ p).ravel() / (h + e)
+        indirect_curvature = np.where(e == 0, beta*q/2., 0.)
+        matrix = (matrix + sparse.diags(indirect_curvature)).tocsr()
+        rhs = np.where(e > 0, alpha, beta)
     else:
         raise ValueError('Unknown quadratic fitting model')
     return StageSystem(matrix, rhs, p)

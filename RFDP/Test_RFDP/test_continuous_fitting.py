@@ -155,6 +155,9 @@ class CertifiedFittingTests(unittest.TestCase):
     def test_boundary_odds_rank_and_independent_trajectory_readback(self):
         self.check_rank_readback('boundary_odds')
 
+    def test_two_step_rank_and_independent_trajectory_readback(self):
+        self.check_rank_readback('two_step_fitting')
+
     def check_rank_readback(self, source):
         import copy
         import json
@@ -168,7 +171,8 @@ class CertifiedFittingTests(unittest.TestCase):
             for i in ids:
                 w[i,i]=1.
                 for j in ids:
-                    if i<j:w[i,j]=w[j,i]=float(rng.uniform(.05,.8))
+                    if i<j and (source!='two_step_fitting' or j-i<=2):
+                        w[i,j]=w[j,i]=float(rng.uniform(.05,.8))
         full=rng.uniform(.05,.95,(n,n));full=(full+full.T)/2;np.fill_diagonal(full,1.)
         import tempfile
         from pathlib import Path

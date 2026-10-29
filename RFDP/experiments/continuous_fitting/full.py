@@ -151,7 +151,7 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
-    assert CFG['source'] in ('continuous','boundary_odds') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],QN,GN,WORKERS)==(5,25,5,500,3368,19732,16)
+    assert CFG['source'] in ('continuous','boundary_odds','two_step_fitting') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],QN,GN,WORKERS)==(5,25,5,500,3368,19732,16)
     if stage=='compute':
         assert not OUT.exists(),'New run only; no automatic overwrite or retry'
         initial=resources(reserve=True)
