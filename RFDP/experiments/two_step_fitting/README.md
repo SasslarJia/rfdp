@@ -1,9 +1,16 @@
 # Two-step renewal fitting for the indirect frontier
 
-Status: formal Market v2 launched at2026-10-29 18:42:36 +08:00 on16workers x BLAS1,
-frozen execution commit `08f44a63d3f50e1d2453024405d6b38aade837df`.
+Status: formal Market v2 completed and fully accepted at2026-10-29 19:50 +08:00;
+this fixed form is stopped after a negative accuracy result. Execution used
+16workers x BLAS1 and frozen commit `08f44a63d3f50e1d2453024405d6b38aade837df`.
 37 related CPU correctness checks passed. Model key `two_step_fitting` in the
-shared `experiments.continuous_fitting` runner. No full accuracy result exists yet.
+shared `experiments.continuous_fitting` runner. [Full result](result.json):
+mAP92.710585%, Rank-1 94.388361%; differences from the original are
+-0.424317 and -0.771971 percentage points. Both query- and identity-paired
+95% intervals are below zero for both metrics. All four stages exited0;
+336788 actual solves and all saved scores/frontiers/bridges/rankings passed
+readback, with maximum new-equation residual9.564e-10. Computation took48.14min
+and full readback18.62min. Acceptance and accuracy are separate conclusions.
 The initial v1 stopped before completing any query because concurrent legacy
 logger imports raced to create a directory; the idempotent-creation fix and
 [original failure](initialization-failure.json) preserve that distinction.

@@ -39,17 +39,22 @@ def compare(query):
             assert row['iteration'] == batch
             e = boundary.copy()
             for i, j, v in row['bridges']: e[i] += v
+            q = None
             if row['returned_scores'] is not None:
                 w = GRAPH[u][:, u]; eu = e[u]
                 scores, residual, event = solve(w, eu, source='original')
                 selected = u[event['returned_prefix_local']].tolist()
                 h = np.asarray(w.sum(axis=1)).ravel(); p = eu/(h+eu)
+                q = np.asarray(w @ p).ravel()/(h+eu) if CFG['source']=='two_step_fitting' else None
                 if batch == 0:
                     direct = p[p > 0]
                     original_values=np.array([float(v) for v in scores])
                     candidate_values=np.array([float(v) for v in unpack(row['returned_scores'])])
                     record.update(first_direct_count=len(direct), first_p=direct.tolist(),
                                   first_score_relative_change=float(np.linalg.norm(candidate_values-original_values)/np.linalg.norm(original_values)))
+                    if q is not None:
+                        record.update(first_indirect_q=q[eu==0].tolist(),
+                                      first_score_increase_count=int(np.sum(candidate_values > original_values + 1e-8*np.maximum(1,abs(original_values)))))
             else:
                 selected = u.tolist()
             if selected != row['selected']:
@@ -61,6 +66,13 @@ def compare(query):
                 record.update(first_divergence_batch=batch, original_selected=selected,
                               candidate_selected=row['selected'], removed=describe(old-new), added=describe(new-old),
                               set_changed=old!=new)
+                if q is not None:
+                    local={int(node):k for k,node in enumerate(u)}
+                    for key in ('removed','added'):
+                        for node in record[key]:
+                            k=local[node['node']]
+                            node['two_step_probability']=float(q[k])
+                            node['added_fidelity_curvature']=float(CFG['beta']*q[k]/2) if eu[k]==0 else 0.
                 break
             for i in selected:
                 a,b=GRAPH.indptr[i:i+2];boundary[GRAPH.indices[a:b]]+=GRAPH.data[a:b]
@@ -71,6 +83,7 @@ def compare(query):
 
 def main(config, output):
     cfg=json.loads(Path(config).read_text()); run=Path(cfg['output']);output=Path(output)
+    assert cfg['source'] in ('continuous','boundary_odds','two_step_fitting')
     assert (run/'FULL_ACCEPTANCE.json').exists() and (run/'compute.exit').read_text().strip()=='0'
     assert len(list((run/'queries').glob('*.json')))==3368
     assert not output.exists()
@@ -89,6 +102,9 @@ def main(config, output):
     elif cfg['source']=='boundary_odds':
         increments=alpha*probabilities/(1-probabilities)
         curvature_ratio=1/(1-probabilities)
+    elif cfg['source']=='two_step_fitting':
+        increments=np.zeros_like(probabilities)
+        curvature_ratio=np.ones_like(probabilities)
     else:raise ValueError('Diagnostic coefficient summary is not defined for this model')
     def group(rs):
         changed=[r for r in rs if r['first_divergence_batch'] is not None]
@@ -101,6 +117,15 @@ def main(config, output):
                     added_cross_camera=sum(v['cross_camera_positive'] for r in changed for v in r['added']),
                     removed_gallery_positive=sum(v['cross_camera_positive'] and v['node']>=3368 for r in changed for v in r['removed']),
                     added_gallery_positive=sum(v['cross_camera_positive'] and v['node']>=3368 for r in changed for v in r['added']))
+    extra={}
+    if cfg['source']=='two_step_fitting':
+        indirect=np.concatenate([r.pop('first_indirect_q') for r in rows if 'first_indirect_q' in r])
+        extra=dict(indirect_q_quantiles=np.quantile(indirect,[0,.1,.5,.9,.99,1]).tolist(),
+                   indirect_curvature_quantiles=np.quantile(beta*indirect/2,[0,.1,.5,.9,.99,1]).tolist(),
+                   first_stage_score_increase_count=sum(r.get('first_score_increase_count',0) for r in rows),
+                   score_comparison_note='Float diagnostic only; increases use 1e-8 relative guard and do not replace production certificates.',
+                   indirect_swap_counts={key:dict(total=sum(not v['direct'] for r in rows for v in r.get(key,[])),
+                        gallery_positive=sum(not v['direct'] and v['cross_camera_positive'] and v['node']>=3368 for r in rows for v in r.get(key,[]))) for key in ('removed','added')})
     dump(output/'queries.json',rows)
     dump(output/'summary.json',dict(time=now(),scope='all queries, at most first five batches, stop at first divergence',
           causal_claim=False, original_full_trajectory_reconstructed=False,
@@ -114,7 +139,7 @@ def main(config, output):
           first_score_relative_change_quantiles=np.quantile([r['first_score_relative_change'] for r in rows if 'first_score_relative_change' in r],[0,.1,.5,.9,.99,1]).tolist(),
           groups={name:group(rs) for name,rs in [('all',rows),('AP_down',[r for r in rows if r['ap_difference'] < -1e-12]),
              ('AP_up',[r for r in rows if r['ap_difference'] > 1e-12]),('AP_same',[r for r in rows if abs(r['ap_difference']) <= 1e-12])]},
-          query_details_sha256=sha(output/'queries.json')))
+          query_details_sha256=sha(output/'queries.json'),**extra))
     print((output/'summary.json').read_text(),flush=True)
 
 
