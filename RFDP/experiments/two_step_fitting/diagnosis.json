@@ -1,0 +1,140 @@
+{
+  "time": "2026-10-29T19:52:36.798845+08:00",
+  "scope": "all queries, at most first five batches, stop at first divergence",
+  "causal_claim": false,
+  "original_full_trajectory_reconstructed": false,
+  "counting_unit": "Selected node occurrences at first ordered divergence; original cross_camera fields include query and gallery nodes.",
+  "accepted_run_sha256": "1bc686d70e8f25bb9e9fb038f7b58e15ffb4b43ae6c1dc4166ff254b3ea4d14b",
+  "p_quantiles": [
+    0.000012297054810869467,
+    0.00032935895387756437,
+    0.0013035925395442657,
+    0.02441130176509277,
+    0.3111275199421816,
+    0.4495649227260653
+  ],
+  "fraction_direct_p_below_0p1": 0.9465394053117783,
+  "model": "two_step_fitting",
+  "mean_direct_source_increment": 0,
+  "direct_curvature_ratio_quantiles": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "first_score_relative_change_quantiles": [
+    0.0004926833747495696,
+    0.021387537247999543,
+    0.07624226258832975,
+    0.21152199632026333,
+    0.47348492863941843,
+    0.8139376886603967
+  ],
+  "groups": {
+    "all": {
+      "queries": 3368,
+      "diverged_within_first_five": 2212,
+      "ordered_divergence_histogram": {
+        "0": 548,
+        "1": 492,
+        "2": 418,
+        "3": 407,
+        "4": 347
+      },
+      "changed_sets": 1047,
+      "removed_true": 561,
+      "added_true": 491,
+      "removed_cross_camera": 497,
+      "added_cross_camera": 431,
+      "removed_gallery_positive": 388,
+      "added_gallery_positive": 370
+    },
+    "AP_down": {
+      "queries": 306,
+      "diverged_within_first_five": 237,
+      "ordered_divergence_histogram": {
+        "0": 125,
+        "1": 49,
+        "2": 30,
+        "3": 19,
+        "4": 14
+      },
+      "changed_sets": 145,
+      "removed_true": 109,
+      "added_true": 26,
+      "removed_cross_camera": 96,
+      "added_cross_camera": 20,
+      "removed_gallery_positive": 81,
+      "added_gallery_positive": 19
+    },
+    "AP_up": {
+      "queries": 245,
+      "diverged_within_first_five": 192,
+      "ordered_divergence_histogram": {
+        "0": 55,
+        "1": 46,
+        "2": 28,
+        "3": 34,
+        "4": 29
+      },
+      "changed_sets": 102,
+      "removed_true": 34,
+      "added_true": 67,
+      "removed_cross_camera": 28,
+      "added_cross_camera": 63,
+      "removed_gallery_positive": 20,
+      "added_gallery_positive": 49
+    },
+    "AP_same": {
+      "queries": 2817,
+      "diverged_within_first_five": 1783,
+      "ordered_divergence_histogram": {
+        "0": 368,
+        "1": 397,
+        "2": 360,
+        "3": 354,
+        "4": 304
+      },
+      "changed_sets": 800,
+      "removed_true": 418,
+      "added_true": 398,
+      "removed_cross_camera": 373,
+      "added_cross_camera": 348,
+      "removed_gallery_positive": 287,
+      "added_gallery_positive": 302
+    }
+  },
+  "query_details_sha256": "0652ece03537747d65e24a5210488817c1521e84361276394fc29a24ffb312ac",
+  "indirect_q_quantiles": [
+    5.135899110368254e-9,
+    1.9724486379801022e-7,
+    0.0000012595802656506607,
+    0.000038446379926518784,
+    0.0002039732239691228,
+    0.0009235908671646126
+  ],
+  "indirect_curvature_quantiles": [
+    6.419873887960317e-8,
+    0.000002465560797475128,
+    0.00001574475332063326,
+    0.0004805797490814848,
+    0.002549665299614035,
+    0.011544885839557657
+  ],
+  "first_stage_score_increase_count": 0,
+  "score_comparison_note": "Float diagnostic only; increases use 1e-8 relative guard and do not replace production certificates.",
+  "indirect_swap_counts": {
+    "removed": {
+      "total": 153,
+      "gallery_positive": 9
+    },
+    "added": {
+      "total": 498,
+      "gallery_positive": 34
+    }
+  },
+  "summary_sha256": "264ca140fbcf4a18c7c2c29303166c35fc2652a8f0b1d45cb6a43efe6091800a",
+  "execution_commit": "77e3c62c16aff6bfb5d7393ea77c7f80e0eb2854"
+}

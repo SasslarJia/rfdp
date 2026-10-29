@@ -45,6 +45,11 @@ def assemble_system(w_uu, e_u, alpha=5., beta=25., source='continuous'):
     p = e / (h + e)
     if source == 'original':
         rhs = np.where(e > 0, alpha, beta)
+    elif source == 'stationary_measure':
+        # Degree-weighted fidelity in the SAME x coordinate as L(W) smoothing.
+        # [L+alpha*diag(h*p)]x = h*b0; returned scores are x, not sqrt(h)*x.
+        matrix = (sparse.diags(h + alpha*h*p) - w).tocsr()
+        rhs = h*np.where(e > 0, alpha, beta)
     elif source == 'continuous':
         rhs = alpha * p + beta * (1. - p)
     elif source == 'boundary_odds':

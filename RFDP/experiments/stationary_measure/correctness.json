@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "related_tests": 43,
+  "new_source_tests": 6,
+  "suites": [
+    "test_continuous_fitting",
+    "test_boundary_odds",
+    "test_two_step_fitting",
+    "test_stationary_measure",
+    "test_full_ihyrdp"
+  ],
+  "performance_qualification": false,
+  "retrieval_accuracy_established": false
+}

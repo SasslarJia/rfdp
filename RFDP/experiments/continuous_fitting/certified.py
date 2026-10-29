@@ -1,4 +1,4 @@
-"""Certified original-matrix solves with an explicitly chosen fitting source.
+"""Certified quadratic fitting with an explicitly chosen target and score coordinate.
 
 Float64 candidates and vectorized outward residuals are tried first. Higher
 precision and sparse LU refinement are used only when necessary. The frozen
@@ -62,7 +62,7 @@ def fast_certificate(w, e, alpha, beta, scores, source):
             hl[i] = down(hl[i]+w.data[k]); hu[i] = up(hu[i]+w.data[k])
         if np.any(hl <= 0) or not np.isfinite(hu).all(): return None
         rl, ru = down(np.sqrt(hl)), up(np.sqrt(hu))
-        zl, zu = down(xl/ru), up(xu/rl)
+        zl, zu = (xl, xu) if source=='stationary_measure' else (down(xl/ru), up(xu/rl))
         ll = np.zeros(len(e)); lu = ll.copy()
         for offset in range(width):
             active = start+offset < end; i = rows[active]; k = start[active]+offset
@@ -89,9 +89,10 @@ def fast_certificate(w, e, alpha, beta, scores, source):
             dl[indirect] = np.maximum(0., down(down(beta*sl[indirect])/2.))
             du[indirect] = up(up(beta*su[indirect])/2.)
         nl = down(ll+down(dl*zl)); nu = up(lu+up(du*zu))
-        al = np.minimum(down(nl/rl), down(nl/ru))
-        au = np.maximum(up(nu/rl), up(nu/ru))
-        if source in ('original', 'two_step_fitting'):
+        denominator_l, denominator_u = (hl,hu) if source=='stationary_measure' else (rl,ru)
+        al = np.minimum(down(nl/denominator_l), down(nl/denominator_u))
+        au = np.maximum(up(nu/denominator_l), up(nu/denominator_u))
+        if source in ('original', 'two_step_fitting','stationary_measure'):
             bl = bu = np.where(e > 0, alpha, beta)
         elif source == 'boundary_odds':
             bl = down(alpha*down(1.+down(e/hu)))
@@ -118,7 +119,9 @@ class Block(original.Block):
     def __init__(self, w, e, alpha, beta, source):
         super().__init__(w, e, alpha, beta)
         self.source = source
-        if source == 'continuous':
+        if source == 'stationary_measure':
+            self.b = [h*b for h,b in zip(self.h,self.b)]
+        elif source == 'continuous':
             self.b = [(mp.mpf(alpha)*t+mp.mpf(beta)*h)/(h+t)
                       for h, t in zip(self.h, self.ee)]
         elif source == 'boundary_odds':
@@ -126,6 +129,9 @@ class Block(original.Block):
                       for h, t in zip(self.h, self.ee)]
 
     def coefficients(self):
+        if self.source == 'stationary_measure':
+            _, d = super().coefficients()
+            return [mp.mpf(1)]*self.n, d
         if self.source == 'two_step_fitting':
             root, d = super().coefficients()
             p = [t/(v+t) for v,t in zip(self.h,self.ee)]
@@ -136,7 +142,7 @@ class Block(original.Block):
         return [mp.sqrt(h) for h in self.h], [mp.mpf(self.alpha)*t for t in self.ee]
 
     def rounded_matrix(self):
-        if self.source not in ('boundary_odds','two_step_fitting'): return super().rounded_matrix()
+        if self.source not in ('boundary_odds','two_step_fitting','stationary_measure'): return super().rounded_matrix()
         return assemble_system(self.w, self.e, self.alpha, self.beta, self.source).matrix.tocsc()
 
     def certify(self, scores, dps):
@@ -147,7 +153,7 @@ class Block(original.Block):
             root = [mp.iv.sqrt(v) for v in h]
             d = [point(self.alpha)*v*t/(v+t) for v, t in zip(h, ee)]
             b = ([point(self.alpha if t > 0 else self.beta) for t in self.ee]
-                 if self.source in ('original','two_step_fitting') else
+                 if self.source in ('original','two_step_fitting','stationary_measure') else
                  [(point(self.alpha)*t+point(self.beta)*v)/(v+t) for v, t in zip(h, ee)])
             if self.source == 'boundary_odds':
                 d = [point(self.alpha)*t for t in ee]
@@ -158,11 +164,13 @@ class Block(original.Block):
                 for i,row in enumerate(self.rows):
                     if not self.ee[i]:
                         d[i] = point(self.beta)*sum((point(v)*p[j] for j,v in row),mp.iv.mpf(0))/2
-            xx = [point(v) for v in scores]; z = [v/r for v, r in zip(xx, root)]
+            xx = [point(v) for v in scores]
+            z = xx if self.source=='stationary_measure' else [v/r for v,r in zip(xx,root)]
+            denominator = h if self.source=='stationary_measure' else root
             residual = []
             for i, row in enumerate(self.rows):
                 lap = sum((point(weight)*(z[i]-z[j]) for j, weight in row if j != i), mp.iv.mpf(0))
-                residual.append(b[i]-(lap+d[i]*z[i])/root[i])
+                residual.append(b[i]-(lap+d[i]*z[i])/denominator[i])
             eta = max(bounds(abs(r)/v)[1] for r, v in zip(residual, b))
             relative = bounds(mp.iv.sqrt(sum((abs(r)**2 for r in residual), mp.iv.mpf(0)) /
                                          sum((v*v for v in b), mp.iv.mpf(0))))[1]
@@ -202,7 +210,7 @@ def check_order(w, e, values, cert, canonicalize=False):
 def certify_saved(w, e, values, alpha=5., beta=25., source='continuous'):
     """Check actual stored points; never solve, refine or replace them."""
     w, e, _, _ = original.validate(w, e, alpha, beta)
-    if source not in ('original', 'continuous', 'boundary_odds', 'two_step_fitting') or len(values) != len(e):
+    if source not in ('original', 'continuous', 'boundary_odds', 'two_step_fitting','stationary_measure') or len(values) != len(e):
         raise ValueError('Invalid source or score count')
     cert = fast_certificate(w, e, alpha, beta, values, source)
     checked = None if cert is None else check_order(w, e, values, cert)
@@ -221,7 +229,15 @@ def solve(w, e, alpha=5., beta=25., source='continuous'):
     start = time.monotonic()
     w, e, _, nc = original.validate(w, e, alpha, beta)
     if len(e) > 8192: raise original.ArithmeticFailure('Local stop limit 8192; no truncation')
-    system = assemble_system(w, e, alpha, beta, source)
+    # Exact symmetric preconditioning; this changes neither the target nor
+    # which actual returned x values the certificate checks.
+    score_scale = None
+    if source == 'stationary_measure':
+        score_scale = np.sqrt(np.asarray(w.sum(axis=1)).ravel())
+        parent = assemble_system(w,e,alpha,beta,'original')
+        system = parent._replace(rhs=score_scale*parent.rhs)
+    else:
+        system = assemble_system(w, e, alpha, beta, source)
     candidate = None; method = 'sparse-lu'; refinements = []; factor = None
     cg_iterations = 0
     if len(e) > 128:
@@ -237,6 +253,8 @@ def solve(w, e, alpha=5., beta=25., source='continuous'):
             factor = splu(system.matrix.tocsc()); candidate = factor.solve(system.rhs)
         except RuntimeError:
             candidate = None
+    if candidate is not None and score_scale is not None:
+        candidate = candidate/score_scale
     values = None if candidate is None else [mp.mpf(float(v)) for v in candidate]
     for dps in (0,)+PRECISIONS:
         with mp.workdps(max(24, dps)):

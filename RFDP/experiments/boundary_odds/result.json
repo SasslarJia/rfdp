@@ -101,7 +101,7 @@
   },
   "acceptance": {
     "solver_calls": 336788,
-    "max_recomputed_residual": 1.3688314522374501e-9,
+    "max_recomputed_residual": 1.3688314522374501e-09,
     "max_local_nodes": 6459,
     "bridge_queries": 17,
     "numerical_tail_total": 0,
@@ -129,5 +129,15 @@
     "/root/autodl-tmp/rfdp-reliability-market-20261015/v2/features/test-osnet.mat": "9f603d7149c99e5f4ba44934829d03d3fa1e25f737924c9bb6fa81f37c2d9c31",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json": "666ff0c557f5eba901c1b0d18b0355c68e8677500acd8c8d82421e0eef5cdcbf",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json": "926bea558d9431f1d2f6245d5a5882674b0a77d5e11efc04f079c42d9f5afa1a"
+  },
+  "storage": {
+    "trace_gzip_deleted": 3368,
+    "allocated_deleted_bytes": 10189340672,
+    "server_receipt": "/root/autodl-tmp/rfdp-graph-routes-20261026/boundary-odds-trace-cleanup.json",
+    "time": "2026-10-29T20:10:45.761966+08:00",
+    "precheck_sha256": "06f406abc852cfd870b0feac809a658d62fcb4363b47f15655e549a76d9779c8",
+    "dependency_open_files_and_all_trace_hashes_checked": true,
+    "full_saved_score_readback_repeatable_from_remaining": false,
+    "kept": "metrics, ranks, prefixes, metadata, accepted summaries, diagnosis and Git code; original full acceptance remains historical evidence"
   }
 }
