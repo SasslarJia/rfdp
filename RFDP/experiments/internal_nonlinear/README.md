@@ -1,10 +1,10 @@
 # I-HyRDP internal nonlinear smoothing
 
-This directory on GitHub branch `test` is the source of truth for the current experiment. Edit and commit code here; deploy a recorded commit to the server. Do not create another dated local source/log directory for each change. Runtime traces, features, rankings, progress and failure evidence remain on the server and are excluded from Git. Keep only a compact current-state pointer outside the repository.
+This directory preserves the nonlinear experiment on GitHub branch `test` and shared runtime utilities. The current retained candidate is [stationary_measure](../stationary_measure/README.md); its quadratic launcher still imports `runtime/analyze_route.py` here. Runtime traces, features and rankings remain outside Git.
 
 ## Current implementation
 
-**Status: paused for computational cost, 2026-10-29.** The 16-worker population process group was suspended at 11:38:54 UTC+8 with 626/3368 completed queries, including 46 completed by the adaptive revision. Completed artifacts and in-flight process state are preserved. This is an execution-cost decision, not evidence of poor retrieval accuracy or a numerical failure. The server record is `market-internal-nonlinear-theta0p5-v1/SUSPENDED_FOR_COST_REVIEW.json`. Do not automatically resume or restart it. Before any later resumption, recheck process identities and resources; suspension also freezes the resource guard and retains resident memory.
+**Status: stopped for computational cost; 626/3368 saved complete queries.** The group was suspended on 2026-10-29 with 46 queries completed by the adaptive revision. On 2026-10-30 the user reported powering off the server. Saved artifacts and frozen source remain references, but in-flight state and old PIDs must not be assumed to survive. The server record `market-internal-nonlinear-theta0p5-v1/SUSPENDED_FOR_COST_REVIEW.json` describes the historical suspension. There is no full accuracy conclusion and no automatic resume or restart.
 
 `model/adaptive-precision-v1/` implements the same strongly convex nonlinear edge smoothing objective with adaptive interval precision. Production tries 24, 40, 80, then 120 decimal digits; the saved-score reader escalates independently. An inconclusive certificate increases precision. It never relaxes the residual threshold or accepts uncertified selections.
 
@@ -62,4 +62,4 @@ The last column is `solver_total / (solver_total - candidate_time)`, an optimist
 
 The next internal-theory investigation should preserve a quadratic objective and a linear solve at each original stage, with GPU-compatible numerical operations. Avoid adding nonlinear Newton iterations or another original solve solely to define a scale. First derive the mechanism, solvability and computational cost; then implement the selected hypothesis and run the formal comparison. This is a design constraint, not an already validated replacement model or an accuracy promise. Do not revive stopped graph-calibration, frontier or depth modifications under a new name. The current objective and correctness thresholds remain unchanged in the preserved implementation.
 
-The current candidate is documented separately in [continuous fitting](../continuous_fitting/README.md). It changes the fitting source while retaining the original matrix. It has mathematical checks only and does not alter this preserved nonlinear run.
+The current retained candidate is documented separately in [stationary_measure](../stationary_measure/README.md). The original continuous-source fixed form has completed evaluation and is retired; its directory now also holds the shared quadratic runner.

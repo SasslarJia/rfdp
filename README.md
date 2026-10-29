@@ -15,40 +15,49 @@ repository does not train a new backbone.
 | `RFDP/EVAL/` | ReID evaluation |
 | `RFDP/experiments/full_reid/` | Full-query input preparation, original methods and fixed comparison implementations |
 | `RFDP/experiments/reliability/` | Accepted CSW + ordinary neighbourhood-support model and mechanism controls |
-| `RFDP/experiments/continuous_fitting/` | Certified quadratic fitting experiment; full Market accepted, no accuracy gain |
-| `RFDP/experiments/boundary_odds/` | Current target-preserving boundary-mass hypothesis; uses the shared quadratic runner |
-| `RFDP/experiments/internal_nonlinear/` | Frozen nonlinear experiment and cost review; population computation is paused |
+| `RFDP/experiments/stationary_measure/` | Current retained candidate: degree-weighted hybrid fitting, two accepted Market populations, theory and evidence |
+| `RFDP/experiments/continuous_fitting/` | **Active shared quadratic runner, solver and verifier**; its original continuous-source model is retired |
+| `RFDP/experiments/{boundary_odds,two_step_fitting}/` | Completed, retired fixed forms; concise results and status |
+| `RFDP/experiments/internal_nonlinear/` | Frozen cost-paused model **and shared analysis utilities still imported by the current runner** |
 | `RFDP/Test_RFDP/` | Correctness tests and small illustrative entry points |
 | `docs/` | Reproduction instructions and historical source provenance |
 
-Start with [full ReID reproduction](docs/FULL_REID_REPRODUCTION.md) and
+Start with the [code and evidence index](docs/RESEARCH_INDEX.md),
+[current research synthesis](RFDP/experiments/stationary_measure/research-summary.md),
+[full ReID reproduction](docs/FULL_REID_REPRODUCTION.md) and
 [accepted CSW implementation](RFDP/experiments/reliability/README.md).
 `PaperFullIterative.py` is the dynamic full-experiment implementation; the
 `Test_RFDP` local-subset examples are not substitutes for that protocol.
 
 ## Current research decision
 
-The nonlinear smoothing variant keeps a positive quadratic part but adds a
-baseline solve for its scale, repeated Newton solves and nonlinear certification
-at every expansion stage. Its full Market run is **paused for excessive cost**
-with 626 completed queries. This is not an accuracy failure: no complete mAP
-result is available. See its [cost review](RFDP/experiments/internal_nonlinear/README.md).
+**30 October 2026: experiments and the recurring task are paused by the user;
+the user reports the server is powered off.** No automatic retrieval, tuning,
+diagnostic, performance or Duke run is queued. Local theory and documentation
+work does not authorize resuming experiments.
 
-The evaluated candidate changes the hybrid fitting source continuously with boundary
-connection strength while preserving the original stage matrix. Its
-[derivation and limitations](RFDP/experiments/continuous_fitting/README.md) explain
-what is proved and the completed fixed Market result. The source is the
-expected original direct/indirect cost under the boundary transition probability.
-The certified runner follows a [fixed full-query protocol](RFDP/experiments/continuous_fitting/PROTOCOL.md).
-All stages completed with exit 0: mAP 93.023429% and Rank-1 94.952494%,
-both below original I-HyRDP. See the [result](RFDP/experiments/continuous_fitting/result.json).
-No further run is queued for this form. The completed common-prefix diagnosis
-supports retaining the original direct target. The next fixed experiment is
-[target-preserving boundary-mass fitting](RFDP/experiments/boundary_odds/README.md):
-one sparse linear solve per stage, no new strength parameter. Its coefficient
-derivation and limitations are documented; retrieval gain remains unestablished.
-Checking out this branch does not start computation; execution uses an explicit
-configuration with frozen commit and input hashes.
+The retained candidate is [degree-weighted hybrid fitting](RFDP/experiments/stationary_measure/README.md).
+Both Market populations and their bounded mechanism reviews are complete:
+
+| Features | mAP / Rank-1 (%) | Change from original I-HyRDP (pp) |
+| --- | ---: | ---: |
+| OSNet | 93.174274 / 95.249406 | +0.039372 / +0.089074 |
+| TransReID | 94.537030 / 95.190024 | +0.006139 / -0.089074 |
+
+All computation, paired analysis and saved-score acceptance stages exited 0.
+All query- and identity-paired 95% intervals cross zero. The current theoretical
+focus is score consistency under a specified mass-preserving graph refinement,
+and conditional pairwise stability under departures from it. Ordinary duplicate
+images, rebuilt kNN graphs and full iterative ranking require separate evidence.
+The candidate has not been run on Duke; original I-HyRDP and the five fixed
+comparators already have the complete Market/Duke × OSNet/TransReID matrix.
+
+Continuous-source, boundary-odds and two-step fitting fixed forms are retired.
+The nonlinear form stopped at 626/3368 queries because of cost, without a full
+accuracy result. Its saved artifacts and frozen revision remain references;
+the old SIGSTOP process state must not be assumed to survive server shutdown.
+Directory names do not determine whether code is unused: the current solver and
+analysis still depend on modules under two historical experiment directories.
 
 ## Version and data policy
 
@@ -60,7 +69,7 @@ scratch entry points, IDE files, bytecode and a duplicate runner have been
 removed from the active tree. Accepted CSW and comparison implementations remain.
 
 Frozen results must be checked with their frozen source revision and original
-manifests. The paused nonlinear execution uses
+manifests, recorded in the evidence index. The nonlinear execution used
 `5e5ec194ef362c9bf179d73f8bd6ea0a10d71601`, not the latest cleaned working tree.
 Its deployment exporter rejects incompatible repository inputs before writing.
 Historical provenance JSON files are records, not manifests to silently update.
