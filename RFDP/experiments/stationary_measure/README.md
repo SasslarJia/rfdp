@@ -1,6 +1,8 @@
 # Degree-weighted hybrid fitting in one score coordinate
 
-Status: mathematical and implementation candidate. No retrieval improvement is established. The experiment key is `stationary_measure`. This is one replacement of the fitting measure/coordinate convention, not a graph change, an additional indirect anchor, or post-hoc score division.
+Status: full Market population accepted. mAP 93.174274% and Rank-1 95.249406%, respectively +0.039372 and +0.089074 percentage points against original I-HyRDP. Both query- and identity-paired 95% intervals cross zero. This is a development point gain, not an established stable gain or mechanism-specific Rank-1 advantage. See result.json. Retain the candidate for the mechanism review below; the fixed experimental success criteria are unchanged.
+
+The experiment key is `stationary_measure`. This is one replacement of the fitting measure/coordinate convention, not a graph change, an additional indirect anchor, or post-hoc score division.
 
 ## Objective and implementation
 

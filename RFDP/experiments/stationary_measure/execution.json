@@ -1,6 +1,6 @@
 {
-  "status": "formal_population_running",
-  "time": "2026-10-29T20:14:33.803898+08:00",
+  "status": "full_population_accepted_point_gain_mechanism_review",
+  "time": "2026-10-29T21:19:58.125859+08:00",
   "execution_commit": "3ddf0520db18852401c636620147bd837754db0f",
   "run": "market-stationary-measure-fitting-v1",
   "worktree": "/root/autodl-tmp/rfdp-stationary-measure-test",
@@ -9,12 +9,11 @@
   "started": "2026-10-29T20:13:33.462461+08:00",
   "workers": 16,
   "blas_threads": 1,
-  "completed_queries": 50,
+  "completed_queries": 3368,
   "full_population": 3368,
   "gallery": 19732,
-  "cpu_cores": 15.971955844242945,
   "failed": false,
-  "accuracy_available": false,
+  "accuracy_available": true,
   "correctness_tests_passed": 43,
   "launch_static_bytes": 65631817728,
   "launch_resources": {
@@ -37,5 +36,14 @@
     "output_budget_bytes": 17179869184,
     "static_total_bytes": 65631817728
   },
-  "server_snapshot": "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-measure-current.json"
+  "server_snapshot": "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-measure-current.json",
+  "full_acceptance_sha256": "6415b36dea04eb2ab44de0a50877c37d33cc395cb750d484d62cb1df6f91aa3d",
+  "result": "result.json",
+  "execution_finished": true,
+  "exit_codes": {
+    "compute.exit": 0,
+    "analysis.exit": 0,
+    "acceptance.exit": 0,
+    "total.exit": 0
+  }
 }
