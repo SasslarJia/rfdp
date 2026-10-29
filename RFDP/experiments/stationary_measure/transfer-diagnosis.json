@@ -1,0 +1,881 @@
+{
+  "status": "bounded_post_hoc_completed",
+  "execution_commit": "64c0b7edae42aece0695e2895f3784554cd5e41a",
+  "reference_schema_checks_passed": 2,
+  "exit_code": 0,
+  "protocol": "transfer-diagnosis-protocol.md",
+  "summary_sha256": "86d6f2fbca5558f0bf09a74a620807095a49ce656fc7799bc0b35eb25c22e88e",
+  "server_summary": "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-transfer-diagnosis/summary.json",
+  "server_queries": "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-transfer-diagnosis/queries.json",
+  "summary": {
+    "time": "2026-10-29T23:56:46.967435+08:00",
+    "model": "stationary_measure",
+    "scope": "All queries; at most five common batches, stop at first ordered divergence.",
+    "post_hoc": true,
+    "causal_claim": false,
+    "original_full_trajectory_reconstructed": false,
+    "float_diagnostics_not_certificates": true,
+    "max_response_closure": 1.3540826547674255e-12,
+    "groups": {
+      "all": {
+        "queries": 3368,
+        "diverged_within_first_five": 3121,
+        "ordered_divergence_histogram": {
+          "0": 1643,
+          "1": 713,
+          "2": 406,
+          "3": 208,
+          "4": 151
+        },
+        "changed_sets": 1826,
+        "swaps": {
+          "removed": {
+            "count": 2338,
+            "gallery_positive": 1379,
+            "degree_percentile_quantiles": [
+              0.023529411764705882,
+              0.2682766059443912,
+              0.5641025641025641,
+              0.8134011299435029,
+              0.9510256410256414,
+              0.9932432432432432
+            ]
+          },
+          "added": {
+            "count": 2338,
+            "gallery_positive": 1051,
+            "degree_percentile_quantiles": [
+              0.03759398496240601,
+              0.703992628992629,
+              0.9196977329974811,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.03543201303748328,
+          0.10425081752386384,
+          0.14752444335673465,
+          0.1963002984392551,
+          0.24531211802760608,
+          0.3973597600873733
+        ],
+        "first_score_relative_change_quantiles": [
+          5.2441598623497867e-05,
+          0.007909883412274544,
+          0.039018605661445424,
+          0.07348184876080156,
+          0.10471060972634522,
+          0.15050496803983432
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 2922,
+          "positive_to_negative": 8,
+          "negative_to_positive": 8,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      },
+      "AP_up": {
+        "queries": 211,
+        "diverged_within_first_five": 204,
+        "ordered_divergence_histogram": {
+          "0": 108,
+          "1": 51,
+          "2": 27,
+          "3": 7,
+          "4": 11
+        },
+        "changed_sets": 134,
+        "swaps": {
+          "removed": {
+            "count": 175,
+            "gallery_positive": 69,
+            "degree_percentile_quantiles": [
+              0.12857142857142856,
+              0.2576565008025682,
+              0.5526315789473685,
+              0.7611205432937181,
+              0.9234737632133394,
+              0.935251798561151
+            ]
+          },
+          "added": {
+            "count": 175,
+            "gallery_positive": 75,
+            "degree_percentile_quantiles": [
+              0.18571428571428572,
+              0.6976470588235294,
+              0.9152542372881356,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.048461908437919234,
+          0.1017985640923522,
+          0.14039064548921726,
+          0.1810099774458524,
+          0.2118848357556522,
+          0.23868708556474294
+        ],
+        "first_score_relative_change_quantiles": [
+          0.003058553281150891,
+          0.01902154851230943,
+          0.04581652993358965,
+          0.06893961160231472,
+          0.09394223648965991,
+          0.11279117616709627
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 199,
+          "positive_to_negative": 0,
+          "negative_to_positive": 5,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      },
+      "AP_down": {
+        "queries": 234,
+        "diverged_within_first_five": 216,
+        "ordered_divergence_histogram": {
+          "0": 123,
+          "1": 49,
+          "2": 30,
+          "3": 6,
+          "4": 8
+        },
+        "changed_sets": 131,
+        "swaps": {
+          "removed": {
+            "count": 171,
+            "gallery_positive": 80,
+            "degree_percentile_quantiles": [
+              0.03636363636363636,
+              0.2542372881355932,
+              0.5405405405405406,
+              0.7663551401869159,
+              0.9247546691991138,
+              0.9807692307692307
+            ]
+          },
+          "added": {
+            "count": 171,
+            "gallery_positive": 48,
+            "degree_percentile_quantiles": [
+              0.05194805194805195,
+              0.6739130434782609,
+              0.9130434782608695,
+              0.9931412894375857,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.05713996629871514,
+          0.08994900423148798,
+          0.13165053451294967,
+          0.17210613479388187,
+          0.24942081073453354,
+          0.2754957726253723
+        ],
+        "first_score_relative_change_quantiles": [
+          0.0006275197130726797,
+          0.016697999138302784,
+          0.04500654977860816,
+          0.07108935275327624,
+          0.11159257224193347,
+          0.14875556766202347
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 220,
+          "positive_to_negative": 8,
+          "negative_to_positive": 1,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      },
+      "AP_same": {
+        "queries": 2923,
+        "diverged_within_first_five": 2701,
+        "ordered_divergence_histogram": {
+          "0": 1412,
+          "1": 613,
+          "2": 349,
+          "3": 195,
+          "4": 132
+        },
+        "changed_sets": 1561,
+        "swaps": {
+          "removed": {
+            "count": 1992,
+            "gallery_positive": 1230,
+            "degree_percentile_quantiles": [
+              0.023529411764705882,
+              0.2727272727272727,
+              0.5679012345679012,
+              0.8181818181818182,
+              0.9541790617848969,
+              0.9932432432432432
+            ]
+          },
+          "added": {
+            "count": 1992,
+            "gallery_positive": 928,
+            "degree_percentile_quantiles": [
+              0.03759398496240601,
+              0.7083955223880598,
+              0.9205447330447329,
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.03543201303748328,
+          0.10664646413011544,
+          0.1497609486418087,
+          0.19826809136075751,
+          0.2453394030899268,
+          0.3973597600873733
+        ],
+        "first_score_relative_change_quantiles": [
+          5.2441598623497867e-05,
+          0.007114346871763338,
+          0.0376668956871437,
+          0.07383363942696773,
+          0.10503553197913837,
+          0.15050496803983432
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 2503,
+          "positive_to_negative": 0,
+          "negative_to_positive": 2,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      },
+      "rank1_gained": {
+        "queries": 6,
+        "diverged_within_first_five": 6,
+        "ordered_divergence_histogram": {
+          "0": 6,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "changed_sets": 2,
+        "swaps": {
+          "removed": {
+            "count": 3,
+            "gallery_positive": 0,
+            "degree_percentile_quantiles": [
+              0.21568627450980393,
+              0.2235294117647059,
+              0.2549019607843137,
+              0.5040777372896061,
+              0.5601422870032969,
+              0.5663716814159292
+            ]
+          },
+          "added": {
+            "count": 3,
+            "gallery_positive": 1,
+            "degree_percentile_quantiles": [
+              0.8235294117647058,
+              0.8274509803921568,
+              0.8431372549019608,
+              0.9403088669095957,
+              0.9621724796113135,
+              0.9646017699115044
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.11757639409957364,
+          0.12254862207105777,
+          0.14552336390861395,
+          0.1699006430214522,
+          0.1868464264517518,
+          0.18872929127734064
+        ],
+        "first_score_relative_change_quantiles": [
+          0.02329044218196263,
+          0.030053879080751654,
+          0.049937474252830634,
+          0.09014899879564636,
+          0.11052695842995129,
+          0.11279117616709627
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 6,
+          "positive_to_negative": 0,
+          "negative_to_positive": 5,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      },
+      "rank1_lost": {
+        "queries": 9,
+        "diverged_within_first_five": 9,
+        "ordered_divergence_histogram": {
+          "0": 9,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "changed_sets": 6,
+        "swaps": {
+          "removed": {
+            "count": 8,
+            "gallery_positive": 3,
+            "degree_percentile_quantiles": [
+              0.09523809523809523,
+              0.15252976190476192,
+              0.3132440476190476,
+              0.7236756756756757,
+              0.8993945945945946,
+              0.918918918918919
+            ]
+          },
+          "added": {
+            "count": 8,
+            "gallery_positive": 0,
+            "degree_percentile_quantiles": [
+              0.05194805194805195,
+              0.44891774891774894,
+              0.7593201754385965,
+              0.9810810810810812,
+              0.9981081081081081,
+              1.0
+            ]
+          }
+        },
+        "first_log_degree_std_quantiles": [
+          0.10805574872003089,
+          0.11252732323930913,
+          0.12378629152161282,
+          0.1643686021030972,
+          0.16673029180554408,
+          0.16699270177248263
+        ],
+        "first_score_relative_change_quantiles": [
+          0.02626406087844648,
+          0.03216803983386506,
+          0.048511048389220435,
+          0.06662082304548816,
+          0.08163421373940748,
+          0.08330236826095407
+        ],
+        "first_local_gallery_margin": {
+          "eligible_queries": 9,
+          "positive_to_negative": 8,
+          "negative_to_positive": 0,
+          "note": "Restricted to the first frontier, not the final full-gallery Rank-1; float descriptive signs."
+        }
+      }
+    },
+    "accepted_run_sha256": "9766b716edcaa4fd5bc3f5839314ebe85af69739edec3487c0434e2e96870c97",
+    "query_details_sha256": "d72b9209e46dc8c06ddc6f6b1d15cdaba0f5796787d40baf3c4334def2776c6c"
+  },
+  "rank1_changed_query_details": [
+    {
+      "query": 151,
+      "ap_difference": -0.12743915323499366,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 2.1934222923564012e-14,
+      "first_stage": {
+        "log_degree_std": 0.12378629152161282,
+        "relative_score_change": 0.06245043674162169,
+        "relative_response_closure": 2.1934222923564012e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 56.16151908256643,
+        "candidate": -30.71409200743892,
+        "positive_count": 19,
+        "negative_count": 22
+      },
+      "set_changed": true,
+      "original_selected": [
+        10535,
+        10537,
+        10539,
+        10540,
+        10526
+      ],
+      "candidate_selected": [
+        10535,
+        10537,
+        10539,
+        10540,
+        11616
+      ]
+    },
+    {
+      "query": 251,
+      "ap_difference": -0.5984622007539335,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 4.863847076613005e-14,
+      "first_stage": {
+        "log_degree_std": 0.16371257718575083,
+        "relative_score_change": 0.058703898009933385,
+        "relative_response_closure": 4.863847076613005e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 222.23824477570452,
+        "candidate": -1239.289692276583,
+        "positive_count": 16,
+        "negative_count": 48
+      },
+      "set_changed": true,
+      "original_selected": [
+        11010,
+        11011,
+        11012,
+        11018,
+        7889
+      ],
+      "candidate_selected": [
+        11010,
+        11011,
+        11012,
+        542,
+        12425
+      ]
+    },
+    {
+      "query": 381,
+      "ap_difference": 0.9959771824261975,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 1.5733773622567526e-14,
+      "first_stage": {
+        "log_degree_std": 0.1510719947655637,
+        "relative_score_change": 0.058112900795233915,
+        "relative_response_closure": 1.5733773622567526e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -16450.901235901318,
+        "candidate": -15556.190576433586,
+        "positive_count": 2,
+        "negative_count": 35
+      },
+      "set_changed": false,
+      "original_selected": [
+        11563,
+        11564,
+        11565,
+        11567,
+        11566
+      ],
+      "candidate_selected": [
+        11563,
+        11564,
+        11567,
+        11565,
+        11566
+      ]
+    },
+    {
+      "query": 522,
+      "ap_difference": 0.04166666666666674,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 5.6660473562175443e-14,
+      "first_stage": {
+        "log_degree_std": 0.14634955332274546,
+        "relative_score_change": 0.04176204771042735,
+        "relative_response_closure": 5.6660473562175443e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -33.128994139697625,
+        "candidate": 96.44756756475545,
+        "positive_count": 11,
+        "negative_count": 25
+      },
+      "set_changed": false,
+      "original_selected": [
+        12353,
+        12354,
+        12326,
+        519,
+        12347
+      ],
+      "candidate_selected": [
+        12353,
+        12354,
+        519,
+        12347,
+        12326
+      ]
+    },
+    {
+      "query": 797,
+      "ap_difference": 0.025000000000000022,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 7.881731649638549e-14,
+      "first_stage": {
+        "log_degree_std": 0.14469717449448244,
+        "relative_score_change": 0.06750682142419645,
+        "relative_response_closure": 7.881731649638549e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -934.2250361320475,
+        "candidate": 5137.7052022246935,
+        "positive_count": 19,
+        "negative_count": 76
+      },
+      "set_changed": false,
+      "original_selected": [
+        13520,
+        5210,
+        9562,
+        795,
+        13510
+      ],
+      "candidate_selected": [
+        13520,
+        5210,
+        795,
+        13510,
+        9562
+      ]
+    },
+    {
+      "query": 1292,
+      "ap_difference": 0.15792667795595217,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 1.0256329471617193e-14,
+      "first_stage": {
+        "log_degree_std": 0.18872929127734064,
+        "relative_score_change": 0.11279117616709627,
+        "relative_response_closure": 1.0256329471617193e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -4117.580442912964,
+        "candidate": 1745.971470912089,
+        "positive_count": 10,
+        "negative_count": 22
+      },
+      "set_changed": true,
+      "original_selected": [
+        15411,
+        15412,
+        6351,
+        15633,
+        9732
+      ],
+      "candidate_selected": [
+        15411,
+        15412,
+        6351,
+        15404,
+        1290
+      ]
+    },
+    {
+      "query": 1820,
+      "ap_difference": -0.2566666666666666,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 1.4245149287389814e-14,
+      "first_stage": {
+        "log_degree_std": 0.16699270177248263,
+        "relative_score_change": 0.08330236826095407,
+        "relative_response_closure": 1.4245149287389814e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 2399.5081851799296,
+        "candidate": -1472.0025406386594,
+        "positive_count": 5,
+        "negative_count": 40
+      },
+      "set_changed": true,
+      "original_selected": [
+        17722,
+        6839,
+        17723,
+        17724,
+        17725
+      ],
+      "candidate_selected": [
+        17722,
+        6839,
+        17723,
+        17724,
+        1745
+      ]
+    },
+    {
+      "query": 2006,
+      "ap_difference": -0.1912009707464254,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 2.2970578816415617e-14,
+      "first_stage": {
+        "log_degree_std": 0.15961547327056347,
+        "relative_score_change": 0.048511048389220435,
+        "relative_response_closure": 2.2970578816415617e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -387.0139332634026,
+        "candidate": -911.378239228452,
+        "positive_count": 11,
+        "negative_count": 26
+      },
+      "set_changed": true,
+      "original_selected": [
+        6075,
+        4717,
+        4718,
+        6881,
+        6878
+      ],
+      "candidate_selected": [
+        6075,
+        4717,
+        4718,
+        8338,
+        6881
+      ]
+    },
+    {
+      "query": 2087,
+      "ap_difference": -0.02777777777777779,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 1.630302982247845e-14,
+      "first_stage": {
+        "log_degree_std": 0.11773148040353267,
+        "relative_score_change": 0.05413343675144907,
+        "relative_response_closure": 1.630302982247845e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 701.877081365592,
+        "candidate": -29.415015727599894,
+        "positive_count": 18,
+        "negative_count": 5
+      },
+      "set_changed": false,
+      "original_selected": [
+        18631,
+        18632,
+        6104,
+        18642,
+        14749
+      ],
+      "candidate_selected": [
+        18631,
+        18632,
+        6104,
+        14749,
+        18642
+      ]
+    },
+    {
+      "query": 2122,
+      "ap_difference": -0.06125356125356124,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 4.896172612644727e-14,
+      "first_stage": {
+        "log_degree_std": 0.11934052506350105,
+        "relative_score_change": 0.03364403457271971,
+        "relative_response_closure": 4.896172612644727e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 50.6298603255259,
+        "candidate": -138.41464543809252,
+        "positive_count": 7,
+        "negative_count": 33
+      },
+      "set_changed": false,
+      "original_selected": [
+        18764,
+        18759,
+        20512,
+        20510,
+        20511
+      ],
+      "candidate_selected": [
+        18764,
+        20512,
+        18759,
+        20511,
+        20510
+      ]
+    },
+    {
+      "query": 2250,
+      "ap_difference": -0.025746044031647708,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 4.5562845247262205e-14,
+      "first_stage": {
+        "log_degree_std": 0.11364521686912868,
+        "relative_score_change": 0.02626406087844648,
+        "relative_response_closure": 4.5562845247262205e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 183.0354711690502,
+        "candidate": -100.69664881494782,
+        "positive_count": 16,
+        "negative_count": 15
+      },
+      "set_changed": true,
+      "original_selected": [
+        19164,
+        19165,
+        19171,
+        2251,
+        14564
+      ],
+      "candidate_selected": [
+        19164,
+        19165,
+        14564,
+        1067,
+        19171
+      ]
+    },
+    {
+      "query": 2251,
+      "ap_difference": 0.02395649617871831,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 4.990855164006103e-14,
+      "first_stage": {
+        "log_degree_std": 0.11757639409957364,
+        "relative_score_change": 0.02329044218196263,
+        "relative_response_closure": 4.990855164006103e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -65.25501324593279,
+        "candidate": 89.00288647765638,
+        "positive_count": 17,
+        "negative_count": 16
+      },
+      "set_changed": false,
+      "original_selected": [
+        19171,
+        1068,
+        14571,
+        19164,
+        2250
+      ],
+      "candidate_selected": [
+        19171,
+        1068,
+        19164,
+        2250,
+        14571
+      ]
+    },
+    {
+      "query": 2294,
+      "ap_difference": -0.044117647058823484,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 2.7744868050860694e-14,
+      "first_stage": {
+        "log_degree_std": 0.15911174870980832,
+        "relative_score_change": 0.035126644843192494,
+        "relative_response_closure": 2.7744868050860694e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 229.21089169457446,
+        "candidate": -363.35551780074366,
+        "positive_count": 16,
+        "negative_count": 7
+      },
+      "set_changed": true,
+      "original_selected": [
+        19342,
+        19343,
+        19351,
+        2741,
+        20929
+      ],
+      "candidate_selected": [
+        19342,
+        19343,
+        2740,
+        20927,
+        20929
+      ]
+    },
+    {
+      "query": 2473,
+      "ap_difference": 0.12755523695707563,
+      "rank1_difference": 1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 6.385320868310791e-14,
+      "first_stage": {
+        "log_degree_std": 0.12752085004254188,
+        "relative_score_change": 0.03681731597954068,
+        "relative_response_closure": 6.385320868310791e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": -4556.300321243598,
+        "candidate": 988.1113387842997,
+        "positive_count": 6,
+        "negative_count": 49
+      },
+      "set_changed": true,
+      "original_selected": [
+        20008,
+        20010,
+        20009,
+        3636,
+        20028
+      ],
+      "candidate_selected": [
+        20008,
+        20010,
+        20009,
+        3636,
+        2474
+      ]
+    },
+    {
+      "query": 2622,
+      "ap_difference": -0.022727272727272707,
+      "rank1_difference": -1.0,
+      "first_divergence_batch": 0,
+      "max_response_closure": 3.5244676046910296e-14,
+      "first_stage": {
+        "log_degree_std": 0.10805574872003089,
+        "relative_score_change": 0.03962796126749212,
+        "relative_response_closure": 3.5244676046910296e-14
+      },
+      "first_stage_local_gallery_margin": {
+        "original": 33.42532903726078,
+        "candidate": -20.384866755666735,
+        "positive_count": 16,
+        "negative_count": 13
+      },
+      "set_changed": false,
+      "original_selected": [
+        20488,
+        20490,
+        20489,
+        20507,
+        18767
+      ],
+      "candidate_selected": [
+        20488,
+        20490,
+        20489,
+        18767,
+        20507
+      ]
+    }
+  ]
+}

@@ -136,5 +136,14 @@
     "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-transfer-input/CACHE_RESTORED.json": "37621e25c69993133fd8522ce653651a054870cc6a67bfcc494b00d2b66f5465"
   },
   "interpretation": "mAP point increases; Rank-1 point decreases. Both metrics have query- and identity-paired 95% intervals spanning zero. mAP direction agrees with OSNet; Rank-1 direction does not. Neither stable accuracy superiority nor a feature-independent Rank-1 advantage is established.",
-  "decision": "Retain the fixed mass-refinement-consistent candidate. Diagnose the feature-dependent early ordering response under the predeclared bounded protocol; do not retune, replace parameters, or automatically add a component/dataset."
+  "decision": "Retain the fixed candidate; both bounded reviews show a degree preference without universal identity purity or Rank-1 benefit. Proceed from exact mass refinement to an explicitly conditional perturbation/margin analysis; no new parameter grid or full retrieval trial is queued.",
+  "mechanism_review": {
+    "status": "bounded_post_hoc_completed",
+    "execution_commit": "64c0b7edae42aece0695e2895f3784554cd5e41a",
+    "reference_schema_checks_passed": 2,
+    "exit_code": 0,
+    "protocol": "transfer-diagnosis-protocol.md",
+    "summary_sha256": "86d6f2fbca5558f0bf09a74a620807095a49ce656fc7799bc0b35eb25c22e88e",
+    "result": "transfer-diagnosis.json"
+  }
 }
