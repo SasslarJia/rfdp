@@ -128,5 +128,12 @@
     "/root/autodl-tmp/rfdp-reliability-market-20261015/v2/features/test-osnet.mat": "9f603d7149c99e5f4ba44934829d03d3fa1e25f737924c9bb6fa81f37c2d9c31",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json": "666ff0c557f5eba901c1b0d18b0355c68e8677500acd8c8d82421e0eef5cdcbf",
     "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json": "926bea558d9431f1d2f6245d5a5882674b0a77d5e11efc04f079c42d9f5afa1a"
+  },
+  "storage_after_user_authorized_cleanup": {
+    "date": "2026-10-29",
+    "deleted": "3368 completed per-query trace.jsonl.gz files;10528100352 allocated bytes",
+    "retained": "code, full acceptance and exit records, metrics, full ranks, prefixes, per-query metadata and compact common-prefix diagnosis",
+    "server_receipt": "/root/autodl-tmp/rfdp-graph-routes-20261026/continuous-fitting-trace-cleanup.json",
+    "full_score_readback_rerunnable_from_remaining_artifacts": false
   }
 }

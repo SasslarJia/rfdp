@@ -15,5 +15,9 @@
     "total.exit": "1"
   },
   "diagnosis": "The legacy logger checks existence then calls os.makedirs without exist_ok. In a clean Git worktree, concurrent worker imports race to create the same logs directory. This is not a model solve failure.",
-  "action": "Preserve v1 and its manifest/FAILED/exits, fix idempotent directory creation, then use a fresh v2 run with the same scientific definition."
+  "action": "Preserve v1 and its manifest/FAILED/exits, fix idempotent directory creation, then use a fresh v2 run with the same scientific definition.",
+  "completed_queries": 0,
+  "failed_json_sha256": "eb6cb8fd8f6426dec0b95594625861f91db9b0e158b7c89d3323a08dd218aee9",
+  "fix_commit": "08f44a63d3f50e1d2453024405d6b38aade837df",
+  "targeted_fix_check": "16 concurrent directory creators on a fresh temporary path passed"
 }

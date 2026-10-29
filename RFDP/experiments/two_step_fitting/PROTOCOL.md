@@ -9,7 +9,10 @@ there is no horizon, strength, neighbor or precision-tolerance sweep.
 No labels/cameras enter the solver, no second component, no automatic Duke.
 
 Freeze code on GitHub test and deploy the exact commit in a separate S1 worktree.
-Use fresh run `market-two-step-fitting-v1` and `two-step-fitting-config.json`.
+The first dispatch used `market-two-step-fitting-v1`; initialization failed before
+any completed query (see initialization-failure.json). After diagnosing and
+fixing the logger directory race, the unchanged scientific definition uses
+fresh run `market-two-step-fitting-v2` and `two-step-fitting-v2-config.json`.
 The prior full results were used for mechanism selection, so this is continued
 Market development, not an independent holdout claim. No new performance
 qualification. Necessary new-equation and actual-interface checks precede launch.
