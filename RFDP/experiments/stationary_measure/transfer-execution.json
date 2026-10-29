@@ -1,0 +1,64 @@
+{
+  "status": "running_full_population",
+  "dataset": "Market1501",
+  "frontend": "TransReID",
+  "execution_commit": "72d42e24ba15ea38094af4130a271419c1198a75",
+  "signature": "0ac312b4667d0cce630be9425e4cf3713edbf6b0ee40223b733965bb653091cf",
+  "started": "2026-10-29T22:38:34.481875",
+  "run": "market-transreid-stationary-measure-v1",
+  "worktree": "/root/autodl-tmp/rfdp-stationary-transfer-test",
+  "config": "/root/autodl-tmp/rfdp-graph-routes-20261026/stationary-transfer-config.json",
+  "config_sha256": "098a3a4c093228c3ac8d45ff753fee1a1ed8fd2168c70f620a9d4571cf6fff17",
+  "process_group": 163678,
+  "workers": 16,
+  "blas_threads": 1,
+  "latest_snapshot": {
+    "time": "2026-10-29T22:39:47.346080",
+    "completed": 84,
+    "total": 3368,
+    "cpu_cores": 15.823746222330158,
+    "failed": false,
+    "exit_codes": {}
+  },
+  "launch_static_bytes": 64566579200,
+  "launch_resources": {
+    "time": "2026-10-29T22:38:34.480232+08:00",
+    "memory_current": 38554619904,
+    "memory_max": 96636764160,
+    "cpu_max": "1600000 100000",
+    "gpu": "1, 32760",
+    "disks": {
+      "/": {
+        "total": 32212254720,
+        "free": 12501495808
+      },
+      "/root/autodl-tmp": {
+        "total": 97710505984,
+        "free": 45507084288
+      }
+    },
+    "allocated_bytes": 0,
+    "output_budget_bytes": 17179869184
+  },
+  "input_recovery": {
+    "status": "all_frozen_cache_hashes_match",
+    "files": {
+      "features.npy": "ce153531fa2c1908e3210b5f2b60281ad18064ff41f7f91a23c03360758176fb",
+      "affinity.npy": "d3dd1f9983b20e994dbb64538c432a5b1a113ee86b59fb899ec8f8ab96805bd4",
+      "graph.npz": "82ce6eb3deae872020308395b85b5d9fe779eed5990fe94906a64b3254f2848c",
+      "manifest.json": "22591854dffb09480c5cbdf5a9ab4c43bfff271e5e4a3a1ee41fe0d16c7acda5"
+    },
+    "git_commit": "72d42e24ba15ea38094af4130a271419c1198a75",
+    "seconds": 101.1639450835064,
+    "peak_rss_bytes": 11099992064,
+    "feature_extraction": false,
+    "graph_rebuilt": false,
+    "retrieval_rerun": false
+  },
+  "user_upload_authorized": true,
+  "additional_performance_qualification": false,
+  "production_solver_changed": false,
+  "protocol": "transfer-protocol.md",
+  "full_accuracy_available": false,
+  "full_acceptance": false
+}
