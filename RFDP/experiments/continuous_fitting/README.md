@@ -1,11 +1,33 @@
 # Continuous hybrid fitting: a quadratic candidate
 
-**Status: selected for one fixed full-population empirical test.** The matrix
-assembly, source-specific certified solver, original ranking adapter and complete
-saved-score reader are implemented. Thirteen small correctness checks pass,
-including the actual producer/reader file boundary; no real-query performance
-qualification was added. There is still no complete ReID result for this model.
-The prior nonlinear experiment remains a separate paused run.
+**Status: full Market run accepted; no accuracy gain.** All 3368 queries,
+paired analysis and saved-score read-back completed successfully on 2026-10-29
+at 14:33 +08:00, using execution commit `4cb6f46`. No computation is currently
+running for this candidate. The prior nonlinear run remains separately paused.
+
+| Metric (%) | Original I-HyRDP | Continuous fitting | Difference (pp) |
+| --- | ---: | ---: | ---: |
+| mAP | 93.134902 | 93.023429 | -0.111473 |
+| Rank-1 | 95.160333 | 94.952494 | -0.207838 |
+
+Paired mAP 95% intervals are [-0.220313, -0.007139] pp for query resampling
+and [-0.246024, 0.009658] pp for identity resampling. The query interval shows
+a decrease; the identity interval includes zero. These are descriptive paired
+intervals on fixed features, not independent retraining uncertainty.
+
+The 16-worker compute pool took 2974.503 seconds (49.6 minutes), saved-score
+acceptance 1098.991 seconds (18.3 minutes), and the complete chain 68.6 minutes.
+All 336789 actual solves were checked; maximum recomputed residual was
+4.422183e-10, with no numerical completion tail. The reader shares certificate
+arithmetic with production. Structured results and raw evidence hashes are in
+[result.json](result.json); raw scores and rankings remain on S1.
+
+This fixed result does not support replacing the original source by the proposed
+probability-weighted source. Numerical correctness and tractable execution did
+not imply better retrieval. Weak true-link effects are a possible mechanism,
+not an established causal explanation of the observed decline. No parameter
+expansion, second component or new dataset is queued for this form; review the
+completed evidence before selecting a subsequent model.
 
 ## Why reconsider the previous change
 
