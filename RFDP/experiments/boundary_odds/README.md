@@ -1,11 +1,14 @@
 # Target-preserving boundary-mass fitting
 
-Status: the fixed Market development experiment started on S1 at
-2026-10-29 16:56:12 +08:00, with 16 workers x BLAS1, execution commit
-`5fa4044b9c11e9a717e70b7a0a1e44d845159530`. Compute, paired analysis and full
-read-back run sequentially. No full accuracy result is available yet.
-This is a project hypothesis, not an established
-retrieval improvement. The production engine and exact-score reader are shared
+Status: the fixed Market experiment completed and passed full read-back at
+2026-10-29 18:02:32 +08:00, with 16 workers x BLAS1, execution commit
+`5fa4044b9c11e9a717e70b7a0a1e44d845159530`. All four stages exited zero.
+mAP is 93.132349%, Rank-1 95.190024%; differences from original I-HyRDP are
+-0.002553 and +0.029691 percentage points. Both paired mAP confidence intervals
+include zero. This fixed coefficient form has no mAP point gain and is stopped;
+it is not classified as significantly harmful. [Complete result](result.json).
+Computation took 47.54 minutes, full score/trajectory read-back 18.15 minutes.
+The production engine and exact-score reader are shared
 with `../continuous_fitting`; model key: `boundary_odds`.
 
 ## Why this change follows the result

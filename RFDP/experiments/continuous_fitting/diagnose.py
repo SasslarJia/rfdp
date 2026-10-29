@@ -12,7 +12,7 @@ import argparse, gzip, json, multiprocessing, resource
 from pathlib import Path
 import numpy as np
 from scipy import sparse, io
-from .certified import solve
+from .certified import solve, unpack
 from .full import sha, dump, now
 
 
@@ -46,8 +46,10 @@ def compare(query):
                 h = np.asarray(w.sum(axis=1)).ravel(); p = eu/(h+eu)
                 if batch == 0:
                     direct = p[p > 0]
+                    original_values=np.array([float(v) for v in scores])
+                    candidate_values=np.array([float(v) for v in unpack(row['returned_scores'])])
                     record.update(first_direct_count=len(direct), first_p=direct.tolist(),
-                                  source_increment_mean=float(np.mean(20*(1-direct))))
+                                  first_score_relative_change=float(np.linalg.norm(candidate_values-original_values)/np.linalg.norm(original_values)))
             else:
                 selected = u.tolist()
             if selected != row['selected']:
@@ -71,12 +73,23 @@ def main(config, output):
     cfg=json.loads(Path(config).read_text()); run=Path(cfg['output']);output=Path(output)
     assert (run/'FULL_ACCEPTANCE.json').exists() and (run/'compute.exit').read_text().strip()=='0'
     assert len(list((run/'queries').glob('*.json')))==3368
-    assert not output.exists();output.mkdir()
+    assert not output.exists()
+    cg=Path('/sys/fs/cgroup')
+    assert int((cg/'memory.current').read_text())+17*2**30 <= .7*int((cg/'memory.max').read_text()),'Diagnosis memory reservation'
+    output.mkdir()
     for path,expected in cfg['input_sha256'].items():assert sha(path)==expected,path
     with multiprocessing.get_context('spawn').Pool(16,initializer=initialize,initargs=(cfg,)) as pool:
         rows=list(pool.imap_unordered(compare,range(3368),chunksize=4))
     rows.sort(key=lambda r:r['query'])
     probabilities=np.concatenate([r.pop('first_p') for r in rows if 'first_p' in r])
+    alpha,beta=cfg['alpha'],cfg['beta']
+    if cfg['source']=='continuous':
+        increments=(beta-alpha)*(1-probabilities)
+        curvature_ratio=np.ones_like(probabilities)
+    elif cfg['source']=='boundary_odds':
+        increments=alpha*probabilities/(1-probabilities)
+        curvature_ratio=1/(1-probabilities)
+    else:raise ValueError('Diagnostic coefficient summary is not defined for this model')
     def group(rs):
         changed=[r for r in rs if r['first_divergence_batch'] is not None]
         return dict(queries=len(rs), diverged_within_first_five=len(changed),
@@ -95,7 +108,10 @@ def main(config, output):
           accepted_run_sha256=sha(run/'FULL_ACCEPTANCE.json'),
           p_quantiles=np.quantile(probabilities,[0,.1,.5,.9,.99,1]).tolist(),
           fraction_direct_p_below_0p1=float(np.mean(probabilities<.1)),
-          mean_direct_source_increment=float(np.mean(20*(1-probabilities))),
+          model=cfg['source'],
+          mean_direct_source_increment=float(np.mean(increments)),
+          direct_curvature_ratio_quantiles=np.quantile(curvature_ratio,[0,.1,.5,.9,.99,1]).tolist(),
+          first_score_relative_change_quantiles=np.quantile([r['first_score_relative_change'] for r in rows if 'first_score_relative_change' in r],[0,.1,.5,.9,.99,1]).tolist(),
           groups={name:group(rs) for name,rs in [('all',rows),('AP_down',[r for r in rows if r['ap_difference'] < -1e-12]),
              ('AP_up',[r for r in rows if r['ap_difference'] > 1e-12]),('AP_same',[r for r in rows if abs(r['ap_difference']) <= 1e-12])]},
           query_details_sha256=sha(output/'queries.json')))

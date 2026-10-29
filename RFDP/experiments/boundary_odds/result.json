@@ -1,0 +1,133 @@
+{
+  "status": "full_population_accepted_no_mAP_point_gain",
+  "method": "target-preserving boundary-mass fitting",
+  "dataset": "Market1501",
+  "frontend": "OSNet",
+  "execution_commit": "5fa4044b9c11e9a717e70b7a0a1e44d845159530",
+  "signature": "6ca16eec2ad1f9a453d41c4f0f5e27a1d977cb24d757940fba67962897e55c4f",
+  "parameters": {
+    "alpha": 5,
+    "beta": 25,
+    "step": 5,
+    "depth": 500,
+    "k": 20,
+    "gamma": 0.4,
+    "queries": 3368,
+    "gallery": 19732,
+    "workers": 16,
+    "blas_threads": 1,
+    "source": "boundary_odds"
+  },
+  "started": "2026-10-29T16:56:12.193721+08:00",
+  "finished": "2026-10-29T18:02:32.395992+08:00",
+  "exit_codes": {
+    "compute.exit": 0,
+    "analysis.exit": 0,
+    "acceptance.exit": 0,
+    "total.exit": 0
+  },
+  "accuracy": {
+    "candidate": {
+      "mAP": 0.9313234915411946,
+      "rank1": 0.9519002375296912
+    },
+    "baseline": {
+      "mAP": 0.9313490194491651,
+      "rank1": 0.9516033254156769
+    },
+    "paired_query": {
+      "mAP": {
+        "point_pp": -0.0025527907970434756,
+        "percentile95_pp": [
+          -0.01189760715142826,
+          0.006455268069146785
+        ],
+        "repetitions": 10000,
+        "groups": 3368,
+        "interpretation": "descriptive paired resampling; not independent model retraining"
+      },
+      "rank1": {
+        "point_pp": 0.02969121140142518,
+        "percentile95_pp": [
+          0,
+          0.08907363420427554
+        ],
+        "repetitions": 10000,
+        "groups": 3368,
+        "interpretation": "descriptive paired resampling; not independent model retraining"
+      }
+    },
+    "paired_identity": {
+      "mAP": {
+        "point_pp": -0.0025527907970434756,
+        "percentile95_pp": [
+          -0.013114299651309662,
+          0.008440135575280616
+        ],
+        "repetitions": 10000,
+        "groups": 750,
+        "interpretation": "descriptive paired resampling; not independent model retraining"
+      },
+      "rank1": {
+        "point_pp": 0.02969121140142518,
+        "percentile95_pp": [
+          0,
+          0.08984725965858043
+        ],
+        "repetitions": 10000,
+        "groups": 750,
+        "interpretation": "descriptive paired resampling; not independent model retraining"
+      }
+    },
+    "seed": 260626,
+    "AP_improved": 69,
+    "AP_decreased": 70,
+    "AP_unchanged_within_1e_12": 3229,
+    "rank1_gained": 1,
+    "rank1_lost": 0
+  },
+  "timing": {
+    "compute_pool_seconds": 2852.274191382341,
+    "acceptance_pool_seconds": 1088.773376705125,
+    "total_chain_wall_seconds": 3980.202271,
+    "summed_query_seconds": 45433.67305038497,
+    "query_seconds_quantiles": [
+      3.7014194559305906,
+      13.551573639269918,
+      19.138944102916867,
+      24.378162853699173,
+      30.769245020113885
+    ]
+  },
+  "acceptance": {
+    "solver_calls": 336788,
+    "max_recomputed_residual": 1.3688314522374501e-9,
+    "max_local_nodes": 6459,
+    "bridge_queries": 17,
+    "numerical_tail_total": 0,
+    "all_saved_scores_frontiers_bridges_rankings_checked": true,
+    "certificate_implementation_shared": true
+  },
+  "resources": {
+    "peak_worker_rss_bytes": 2271068160,
+    "allocated_output_bytes": 10773262336
+  },
+  "interpretation": "No mAP point improvement or stable gain. Both mAP intervals cross zero. Rank-1 has one gained query and no lost query; its intervals include zero. This is neither an established improvement nor evidence of a significant negative effect.",
+  "decision": "Stop this fixed coefficient form. Diagnose its completed trajectories before selecting a different mechanism; do not sweep its strength or expand it to Duke.",
+  "server_run": "/root/autodl-tmp/rfdp-graph-routes-20261026/market-boundary-odds-fitting-v1",
+  "evidence_sha256": {
+    "run-manifest.json": "6ed4d58664c039e96d69ad5094de7c7cb2f87e4c7767de25983d52f515d66f01",
+    "COMPUTE_COMPLETE.json": "b553c0942d7e1c59296b0dbe1ad5584c80d56b0000a8484ee8c775c57368dfbe",
+    "FULL_ACCEPTANCE.json": "adbaff975b03e8afb37830a52f6086000cd9a461d8f313a413ac59c27426281c",
+    "paired-original-IHy.json": "6e20946595fb79dcbed0df31a5bf647e1a444bc48c09c0e8d93ce62981421096"
+  },
+  "input_sha256": {
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/graph.npz": "3464ff8e0b6dc0d821fc7ef92366066d486bcd1588a427eb4787a38a41ca0617",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/features.npy": "8b290bcd696e0925dc627382f8f74630ec1cbe0a8186d63e3cc11945013f3aa1",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/affinity.npy": "6a1ae9a25cccff26997877431f72055c23445aa0b898a745efffbfe7a6ba43da",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/manifest.json": "e0ed3eb6c5371d3766bcadd51f7b47bcb93bd48b68a4c732db24d31d71b45967",
+    "/root/autodl-tmp/rfdp-reliability-market-20261015/v2/features/test-osnet.mat": "9f603d7149c99e5f4ba44934829d03d3fa1e25f737924c9bb6fa81f37c2d9c31",
+    "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json": "666ff0c557f5eba901c1b0d18b0355c68e8677500acd8c8d82421e0eef5cdcbf",
+    "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json": "926bea558d9431f1d2f6245d5a5882674b0a77d5e11efc04f079c42d9f5afa1a"
+  }
+}
