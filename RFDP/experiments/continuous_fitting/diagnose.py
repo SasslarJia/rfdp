@@ -85,10 +85,13 @@ def main(config, output):
                     removed_true=sum(v['same_identity'] for r in changed for v in r['removed']),
                     added_true=sum(v['same_identity'] for r in changed for v in r['added']),
                     removed_cross_camera=sum(v['cross_camera_positive'] for r in changed for v in r['removed']),
-                    added_cross_camera=sum(v['cross_camera_positive'] for r in changed for v in r['added']))
+                    added_cross_camera=sum(v['cross_camera_positive'] for r in changed for v in r['added']),
+                    removed_gallery_positive=sum(v['cross_camera_positive'] and v['node']>=3368 for r in changed for v in r['removed']),
+                    added_gallery_positive=sum(v['cross_camera_positive'] and v['node']>=3368 for r in changed for v in r['added']))
     dump(output/'queries.json',rows)
     dump(output/'summary.json',dict(time=now(),scope='all queries, at most first five batches, stop at first divergence',
           causal_claim=False, original_full_trajectory_reconstructed=False,
+          counting_unit='Selected node occurrences at first ordered divergence; original cross_camera fields include query and gallery nodes.',
           accepted_run_sha256=sha(run/'FULL_ACCEPTANCE.json'),
           p_quantiles=np.quantile(probabilities,[0,.1,.5,.9,.99,1]).tolist(),
           fraction_direct_p_below_0p1=float(np.mean(probabilities<.1)),

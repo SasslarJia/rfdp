@@ -29,7 +29,9 @@
       "removed_true": 1474,
       "added_true": 1424,
       "removed_cross_camera": 1343,
-      "added_cross_camera": 1198
+      "added_cross_camera": 1198,
+      "removed_gallery_positive": 1047,
+      "added_gallery_positive": 1021
     },
     "AP_down": {
       "queries": 333,
@@ -45,7 +47,9 @@
       "removed_true": 123,
       "added_true": 80,
       "removed_cross_camera": 109,
-      "added_cross_camera": 62
+      "added_cross_camera": 62,
+      "removed_gallery_positive": 87,
+      "added_gallery_positive": 55
     },
     "AP_up": {
       "queries": 323,
@@ -61,7 +65,9 @@
       "removed_true": 110,
       "added_true": 157,
       "removed_cross_camera": 106,
-      "added_cross_camera": 138
+      "added_cross_camera": 138,
+      "removed_gallery_positive": 82,
+      "added_gallery_positive": 119
     },
     "AP_same": {
       "queries": 2712,
@@ -77,8 +83,11 @@
       "removed_true": 1241,
       "added_true": 1187,
       "removed_cross_camera": 1128,
-      "added_cross_camera": 998
+      "added_cross_camera": 998,
+      "removed_gallery_positive": 878,
+      "added_gallery_positive": 847
     }
   },
-  "query_details_sha256": "8eeb839016579016a79acdccb1b2de4379851d2c4365b6cbd9b134a5e7bbf55a"
+  "query_details_sha256": "8eeb839016579016a79acdccb1b2de4379851d2c4365b6cbd9b134a5e7bbf55a",
+  "counting_unit": "Selected node occurrences at first ordered divergence; original cross_camera fields include query and gallery nodes."
 }

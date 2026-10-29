@@ -1,7 +1,10 @@
 # Target-preserving boundary-mass fitting
 
-Status: selected for one fixed Market development experiment after the completed
-continuous-source result. This is a project hypothesis, not an established
+Status: the fixed Market development experiment started on S1 at
+2026-10-29 16:56:12 +08:00, with 16 workers x BLAS1, execution commit
+`5fa4044b9c11e9a717e70b7a0a1e44d845159530`. Compute, paired analysis and full
+read-back run sequentially. No full accuracy result is available yet.
+This is a project hypothesis, not an established
 retrieval improvement. The production engine and exact-score reader are shared
 with `../continuous_fitting`; model key: `boundary_odds`.
 
@@ -17,7 +20,10 @@ five batches, including 1692 with different selected sets. At those first
 divergences, 1343 cross-camera positives were removed and 1198 added. Order-only
 differences also occur and need not change the next frontier. The AP-down group
 lost 109 cross-camera positives and added 62; the AP-up group lost 106 and added
-138. These post-hoc associations support reconsidering the loss of the original
+138. These counts include same-identity query nodes as well as gallery nodes.
+Restricting to evaluation-eligible gallery positives gives 1047 removed versus
+1021 added overall, 87 versus 55 in the AP-down group, and 82 versus119 in the
+AP-up group. These post-hoc associations support reconsidering the loss of the original
 direct-node advantage; they are not a causal attribution of the entire mAP gap.
 
 We stop the continuous-source form. The next hypothesis preserves its parent's
