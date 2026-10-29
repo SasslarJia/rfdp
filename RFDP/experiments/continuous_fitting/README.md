@@ -111,9 +111,51 @@ Useful exact controls are:
 - All nodes directly anchored with the same p: both sources are constant and
   their solutions differ only by a positive scalar, so rankings coincide.
 - Common positive rescaling of W and e leaves S, p, M and bc unchanged.
+- Equal local degrees and every node directly anchored: rankings coincide even
+  when p varies across nodes. Since S 1=1, M 1=alpha p and b0=alpha 1,
+  psi_c=(beta/alpha) psi0 + ((alpha-beta)/alpha) 1. This is a positive affine
+  transformation, not a new ranking. The assertion is stage-local; it does not
+  assert that all stages of a real query satisfy these conditions.
 
 A nonuniform-boundary small-graph check demonstrates that ranking can change;
 this candidate is not merely a renamed global score rescaling.
+
+## Mechanism audit and remaining qualitative questions
+
+For beta>alpha, the exact fixed-stage difference is
+
+    bc-b0 = (beta-alpha) (1-p) 1_{e>0},
+    psi_c-psi0 = M^(-1) [(beta-alpha) (1-p) 1_{e>0}] >= 0.
+
+The direct source increment is largest for weakly connected A nodes and is then
+propagated through M's inverse. This clarifies what is being changed: the
+original direct-node advantage is weakened continuously. It is not an estimate
+of which edges have the wrong identity. A weak true match can lose exactly the
+advantage we want to remove from a weak false match. Degree heterogeneity and
+the presence of B nodes can be important to where ranking changes arise; they
+are not themselves evidence of a useful new mechanism.
+
+With W fixed, differentiating with respect to one p_j gives
+
+    d psi_c / d p_j = M^(-1) unit_j [alpha-beta-alpha psi_c,j].
+
+For beta>=alpha this is componentwise nonpositive. Increasing one seed-boundary
+probability lowers all affected dissimilarities, not necessarily that node's
+rank relative to another. The algebra does not establish better top-five
+selection or improved identity separation.
+
+Continuity is local to anchored systems. As the last anchor becomes weak,
+lambda_min(M) can approach zero and sensitivity can become arbitrarily large.
+Eliminating the source jump is therefore not a uniform robustness bound.
+
+The qualitative review covers the energy, solvability, positivity, invariances,
+equivalence cases, source changes and stage cost. It is **not complete** in the
+scientific sense needed to select a final method. Still unresolved are a
+principled reason to prefer the unit target over the reciprocal target for
+ReID, whether gains would exceed a simple degree/source effect, novelty relative
+to prior source/fidelity formulations, and behavior under weak true/false links
+and seed errors on real data. These mathematical checks do not establish that
+the candidate is ready for a production experiment.
 
 ## Numerical implementation and cost boundary
 

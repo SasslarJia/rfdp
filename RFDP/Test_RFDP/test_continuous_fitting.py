@@ -86,6 +86,17 @@ class ContinuousFittingTests(unittest.TestCase):
         np.testing.assert_array_equal(np.argsort(self.solve(source='original')), [0, 1, 3, 2])
         np.testing.assert_array_equal(np.argsort(self.solve()), [0, 3, 1, 2])
 
+    def test_regular_graph_all_direct_is_affine_equivalent(self):
+        w = np.array([[1., 1., 0., 1.], [1., 1., 1., 0.],
+                      [0., 1., 1., 1.], [1., 0., 1., 1.]])
+        e = np.array([.01, .1, 2., 7.])  # Unequal p, equal h, no B nodes.
+        original = assemble_system(w, e, source='original')
+        candidate = assemble_system(w, e)
+        x0 = np.linalg.solve(original.matrix.toarray(), original.rhs)
+        xc = np.linalg.solve(candidate.matrix.toarray(), candidate.rhs)
+        np.testing.assert_allclose(xc, 5. * x0 - 4., rtol=1e-13)
+        np.testing.assert_array_equal(np.argsort(xc), np.argsort(x0))
+
     def test_unanchored_component_rejected_without_ridge(self):
         w = sparse.block_diag([self.w, self.w])
         with self.assertRaisesRegex(ValueError, 'anchor'):
