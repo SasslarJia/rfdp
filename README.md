@@ -15,7 +15,7 @@ repository does not train a new backbone.
 | `RFDP/EVAL/` | ReID evaluation |
 | `RFDP/experiments/full_reid/` | Full-query input preparation, original methods and fixed comparison implementations |
 | `RFDP/experiments/reliability/` | Accepted CSW + ordinary neighbourhood-support model and mechanism controls |
-| `RFDP/experiments/continuous_fitting/` | New quadratic fitting hypothesis: derivation and small-graph assembly checks; no ReID result |
+| `RFDP/experiments/continuous_fitting/` | Quadratic fitting hypothesis, certified original-rank adapter and fixed full-query runner; no ReID result yet |
 | `RFDP/experiments/internal_nonlinear/` | Frozen nonlinear experiment and cost review; population computation is paused |
 | `RFDP/Test_RFDP/` | Correctness tests and small illustrative entry points |
 | `docs/` | Reproduction instructions and historical source provenance |
@@ -36,8 +36,11 @@ result is available. See its [cost review](RFDP/experiments/internal_nonlinear/R
 The next candidate changes the hybrid fitting source continuously with boundary
 connection strength while preserving the original stage matrix. Its
 [derivation and limitations](RFDP/experiments/continuous_fitting/README.md) explain
-what is proved and what still needs retrieval evidence. No new experiment is
-started by checking out this branch.
+what is proved and what still needs retrieval evidence. The source is the
+expected original direct/indirect cost under the boundary transition probability.
+The certified runner follows a [fixed full-query protocol](RFDP/experiments/continuous_fitting/PROTOCOL.md).
+Checking out this branch does not start computation; execution uses an explicit
+configuration with frozen commit and input hashes.
 
 ## Version and data policy
 

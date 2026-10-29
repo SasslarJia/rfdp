@@ -115,5 +115,87 @@ class ContinuousFittingTests(unittest.TestCase):
             assemble_system(self.w, self.e, beta=0.)
 
 
+class CertifiedFittingTests(unittest.TestCase):
+    def test_mp_oracle_and_saved_score_damage_rejection(self):
+        import mpmath as mp
+        from experiments.continuous_fitting.certified import solve, certify_saved, Block
+        w = sparse.csr_matrix([[1., 2., 0., .25], [2., 1., .5, 0.],
+                               [0., .5, 1., 1.], [.25, 0., 1., 1.]])
+        e = np.array([2., .001, 0., .2])
+        values, _, event = solve(w, e)
+        with mp.workdps(90):
+            h = [mp.fsum(mp.mpf(float(v)) for v in row) for row in w.toarray()]
+            p = [mp.mpf(float(v))/(hh+mp.mpf(float(v))) for v, hh in zip(e, h)]
+            m = mp.matrix([[int(i==j)*(1+5*p[i])-mp.mpf(float(w[i,j]))/mp.sqrt(h[i]*h[j])
+                            for j in range(4)] for i in range(4)])
+            b = mp.matrix([5*v+25*(1-v) for v in p]); exact = mp.lu_solve(m, b)
+            cert = Block(w,e,5.,25.,'continuous').certify(values,80)
+            self.assertTrue(cert['accepted'])
+            for v, (lo, hi) in zip(exact, cert['intervals']):self.assertTrue(lo <= v <= hi)
+        self.assertEqual(certify_saved(w,e,values)['prefix'],event['returned_prefix_local'])
+        damaged = list(values); damaged[0] *= 1.01
+        with self.assertRaises(np.linalg.LinAlgError):certify_saved(w,e,damaged)
+
+    def test_exact_ties_and_one_ulp_difference(self):
+        from experiments.continuous_fitting.certified import solve, certify_saved
+        w = sparse.eye(7, format='csr'); e = np.ones(7)
+        values, _, event = solve(w,e)
+        self.assertTrue(all(v == values[0] for v in values))
+        self.assertEqual(event['returned_prefix_local'],[0,1,2,3,4])
+        self.assertEqual(certify_saved(w,e,values)['prefix'],[0,1,2,3,4])
+        e[-1] = np.nextafter(1.,2.)
+        values, _, event = solve(w,e)
+        self.assertLess(values[-1],values[0])
+        self.assertEqual(event['returned_prefix_local'],[6,0,1,2,3])
+        self.assertGreater(event['dps'],0)
+
+    def test_actual_rank_and_independent_trajectory_readback(self):
+        import copy
+        import json
+        from MODEL.Paper_RFDP import PaperFullIterative as mod
+        from experiments.continuous_fitting import certified as cert
+        from experiments.continuous_fitting.verify import verify_query
+        # Two components; step five includes skipped solves, a bridge and final truncation.
+        rng=np.random.default_rng(2041); n=17
+        w=np.zeros((n,n))
+        for ids in [list(range(8)),list(range(8,n))]:
+            for i in ids:
+                w[i,i]=1.
+                for j in ids:
+                    if i<j:w[i,j]=w[j,i]=float(rng.uniform(.05,.8))
+        full=rng.uniform(.05,.95,(n,n));full=(full+full.T)/2;np.fill_diagonal(full,1.)
+        import tempfile
+        from pathlib import Path
+        from experiments.continuous_fitting import full as runner
+        from experiments.continuous_fitting.verify import read_rows
+        graph=sparse.csr_matrix(w); similarity=full[0]; cert.EVENTS.clear()
+        old=cert.install()
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                out=Path(td);(out/'queries').mkdir();(out/'accepted').mkdir()
+                runner.OUT=out;runner.QN=1;runner.GN=n-1
+                runner.CFG={'source':'continuous','depth':16};runner.SIG='synthetic'
+                runner.GRAPH=graph;runner.FULL=full
+                # Exact chosen similarity row without needing an affinity=XX^T fixture.
+                runner.X=np.eye(n);runner.INIT_ERROR=None
+                runner.ENGINE=mod.FullIHyRDP(graph,full)
+                row=runner.compute_query(0)
+                self.assertNotIn('error',row,row.get('error'))
+                accepted=runner.accept_query(0)
+                self.assertNotIn('error',accepted,accepted.get('error'))
+                prefix=np.load(out/'queries/0000.prefix.npy')
+                rank=np.load(out/'queries/0000.rankings.npy')
+                rows=list(read_rows(out/'queries/0000.trace.jsonl.gz'))
+                similarity=runner.X@runner.X[0]
+                diag=row['diagnostics']
+        finally:mod.solve_hybrid_sparse=old
+        result=verify_query(graph,full,similarity,0,prefix,rank,rows,'continuous',1,16)
+        self.assertGreater(result['bridge_events'],0)
+        self.assertEqual(result['solver_calls'],diag['solver_calls'])
+        damaged=copy.deepcopy(rows);damaged[0]['selected'][0]=16
+        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,damaged,'continuous',1,16)
+        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,rows[:-1],'continuous',1,16)
+
+
 if __name__ == '__main__':
     unittest.main()

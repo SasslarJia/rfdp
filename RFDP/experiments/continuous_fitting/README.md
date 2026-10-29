@@ -1,10 +1,11 @@
 # Continuous hybrid fitting: a quadratic candidate
 
-**Status: mathematical candidate with small-graph correctness checks.** There is
-no production runner, server deployment, full-query qualification or ReID result
-for this candidate. The nonlinear population run remains paused; this directory
-does not resume or replace it. Accuracy and novelty are hypotheses to evaluate,
-not consequences of positive definiteness.
+**Status: selected for one fixed full-population empirical test.** The matrix
+assembly, source-specific certified solver, original ranking adapter and complete
+saved-score reader are implemented. Thirteen small correctness checks pass,
+including the actual producer/reader file boundary; no real-query performance
+qualification was added. There is still no complete ReID result for this model.
+The prior nonlinear experiment remains a separate paused run.
 
 ## Why reconsider the previous change
 
@@ -154,15 +155,63 @@ scientific sense needed to select a final method. Still unresolved are a
 principled reason to prefer the unit target over the reciprocal target for
 ReID, whether gains would exceed a simple degree/source effect, novelty relative
 to prior source/fidelity formulations, and behavior under weak true/false links
-and seed errors on real data. These mathematical checks do not establish that
-the candidate is ready for a production experiment.
+and seed errors on real data. These mathematical properties do not establish retrieval gain or publication-level novelty. The fixed empirical decision below separates those questions from numerical readiness.
+
+## Why select this hypothesis for a fixed empirical test
+
+A direct local connection is a binary graph property, but a step from node i in
+the full stage graph reaches the seed set with probability p_i=e_i/(h_i+e_i).
+Assign the original direct/indirect costs alpha and beta to those two one-step
+events. Their expectation is uniquely
+
+    E[cost | i] = alpha p_i + beta (1-p_i).
+
+This supplies a precise interpretation of the source replacement, rather than
+claiming that continuity alone is beneficial. It is the affine interpolation
+with endpoint costs beta and alpha, with no additional parameter. The one-step
+event is known from the graph; it is not a true-identity or seed-purity event.
+
+There is also an exact killed-walk representation of the resulting linear
+system. Put z=H^(-1/2)psi, P=H^(-1)W, and
+
+    K=diag(1/(1+alpha p)) P,
+    g_i=b_i/[sqrt(h_i)(1+alpha p_i)].
+
+Then z=g+Kz. K describes a walk that is killed at node i with probability
+alpha p_i/(1+alpha p_i), and otherwise transitions using P. Finite connected
+components with a positive anchor give rho(K)<1, so z is the expected accumulated
+nonnegative reward g until killing. This is a reward-potential interpretation,
+not an assertion that psi equals the GMFPT of the original full graph. Both the
+old and new source share K; only the reward changes.
+
+The qualitative decision is to test whether the probability-weighted source
+improves the original hard direct/indirect assignment at the same stage-matrix
+cost. It can fail on weak true matches and on contaminated seeds; the exact
+ranking-equivalence cases above remain relevant. Novelty must still be assessed
+against prior fidelity/source formulations before making a publication claim.
+The test is justified by the explicit mechanism and bounded added algebra, not
+by an assumed accuracy gain. Only one fixed configuration is scheduled; no
+strength grid, partial-query AP selection or second component is introduced.
 
 ## Numerical implementation and cost boundary
 
-`model.py` only assembles the original matrix and either source. Its tests use
-small dense/direct solves as mathematical oracles. They do not certify a full
-retrieval trajectory. Production integration must adapt the strict numerical
-certificate to bc, not reuse an alpha/beta hard-coded right-hand side.
+`model.py` assembles the original matrix and either source. `certified.py`
+implements a source-specific outward residual enclosure and actual first-five
+certificate. Float64 candidates use CG or sparse LU; precision increases only
+when the certificate is insufficient. The previous original-matrix refinement
+utilities are reused, but their hard-source certificate and tie rule are not.
+Simple exact W/e transposition symmetry is a sufficient tie proof; unresolved
+symmetries are rejected rather than merged by tolerance. The inherited dense MP
+fallback remains limited to 256 nodes. No dense-limit removal is used.
+
+`full.py` uses the unchanged `FullIHyRDP.rank`, stores every actual returned score,
+and evaluates identity labels only after all queries complete. `verify.py`
+reconstructs the frontiers, incremental boundaries, bridges and entire gallery
+ranking from saved points without solving or correcting them. It shares the
+numerical certificate utilities with production; it is independent artifact
+read-back, not an independently implemented interval proof. The synthetic
+producer/reader check covers bridge events, exact and near ties and damaged
+artifact rejection. It is not a performance qualification.
 
 For example, let r=bc-M psi_hat, eta=max_i |r_i|/bc_i < 1, with validated outward
 arithmetic. Inverse positivity implies
