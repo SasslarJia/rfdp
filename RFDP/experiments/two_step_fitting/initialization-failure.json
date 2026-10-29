@@ -1,0 +1,19 @@
+{
+  "status": "engineering_initialization_failure_before_any_completed_query",
+  "execution_commit": "2cd7e80710c155c976d60a8ef743a867dd3b554d",
+  "run": "/root/autodl-tmp/rfdp-graph-routes-20261026/market-two-step-fitting-v1",
+  "failed": {
+    "stage": "compute",
+    "time": "2026-10-29T18:39:48.425443+08:00",
+    "query": 0,
+    "error": "Traceback (most recent call last):\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/experiments/continuous_fitting/full.py\", line 84, in compute_query\n    if INIT_ERROR:raise RuntimeError(INIT_ERROR)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Traceback (most recent call last):\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/experiments/continuous_fitting/full.py\", line 77, in initialize_worker\n    from MODEL.Paper_RFDP import PaperFullIterative as model\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/MODEL/Paper_RFDP/__init__.py\", line 6, in <module>\n    from MODEL.Paper_RFDP.PaperRanker import HyRdpPaper\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/MODEL/Paper_RFDP/PaperRanker.py\", line 3, in <module>\n    from MODEL.Asst_RFDP.ProcAsst import ProcAsst\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/MODEL/Asst_RFDP/ProcAsst.py\", line 5, in <module>\n    from RfdpLog.PrntLog_RFDP import prnt_log\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/RfdpLog/PrntLog_RFDP.py\", line 60, in <module>\n    prnt_log = PrntLog()\n               ^^^^^^^^^\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/RfdpLog/PrntLog_RFDP.py\", line 31, in __init__\n    self.make_dir(file_folder)\n  File \"/root/autodl-tmp/rfdp-two-step-test/RFDP/RfdpLog/PrntLog_RFDP.py\", line 48, in make_dir\n    os.makedirs(tmp_pth)\n  File \"<frozen os>\", line 225, in makedirs\nFileExistsError: [Errno 17] File exists: '/root/autodl-tmp/rfdp-two-step-test/RFDP/RfdpLog/logs'\n\n"
+  },
+  "exits": {
+    "compute.exit": "1",
+    "analysis.exit": null,
+    "acceptance.exit": null,
+    "total.exit": "1"
+  },
+  "diagnosis": "The legacy logger checks existence then calls os.makedirs without exist_ok. In a clean Git worktree, concurrent worker imports race to create the same logs directory. This is not a model solve failure.",
+  "action": "Preserve v1 and its manifest/FAILED/exits, fix idempotent directory creation, then use a fresh v2 run with the same scientific definition."
+}

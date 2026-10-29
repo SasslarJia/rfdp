@@ -44,8 +44,7 @@ class PrntLog(object):
         2020-10-9
         """
         tmp_pth = dir_pth.strip()
-        if not os.path.exists(tmp_pth):
-            os.makedirs(tmp_pth)
+        os.makedirs(tmp_pth, exist_ok=True)
 
     def error(self, err_str: str):
         self.__log.error(err_str)
