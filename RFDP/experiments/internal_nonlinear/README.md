@@ -4,6 +4,8 @@ This directory on GitHub branch `test` is the source of truth for the current ex
 
 ## Current implementation
 
+**Status: paused for computational cost, 2026-10-29.** The 16-worker population process group was suspended at 11:38:54 UTC+8 with 626/3368 completed queries, including 46 completed by the adaptive revision. Completed artifacts and in-flight process state are preserved. This is an execution-cost decision, not evidence of poor retrieval accuracy or a numerical failure. The server record is `market-internal-nonlinear-theta0p5-v1/SUSPENDED_FOR_COST_REVIEW.json`. Do not automatically resume or restart it. Before any later resumption, recheck process identities and resources; suspension also freezes the resource guard and retains resident memory.
+
 `model/adaptive-precision-v1/` implements the same strongly convex nonlinear edge smoothing objective with adaptive interval precision. Production tries 24, 40, 80, then 120 decimal digits; the saved-score reader escalates independently. An inconclusive certificate increases precision. It never relaxes the residual threshold or accepts uncertified selections.
 
 `model/population-adaptive-v2/` resumes completed query artifacts from the original population run, verifies their hashes, and computes only pending queries. The original scientific signature is retained; the arithmetic revision has a separate source lock. `model/population-v1/` and the original certificate/adapter are retained as the same model's reference implementation and migration dependency. They are not alternative research directions.
@@ -43,3 +45,19 @@ The exporter does not start a job or overwrite an existing model deployment. Sup
 The current algorithm performs roughly 100 sequential local solves per query, about 336,800 stage solves over Market. Each stage includes an original linear solution for delta, nonlinear Newton iterations and certification. This is structurally different from Cheb-GR's three global feature-propagation rounds. Adaptive precision reduces arithmetic overhead, not that stage count. A previously discussed 30–40% reduction was a conditional estimate, not a measured speedup. The current implementation has no efficiency claim against Cheb-GR.
 
 The previous torch CUDA backend targets `ProjectedState.linear`; this nonlinear solver calls SciPy sparse Newton routines and does not use that backend. GPU candidate generation is not enabled by this revision.
+
+## Cost reassessment and next research constraint
+
+Natural progress after the adaptive switch was 40 queries in about 37 minutes at 16 workers, still a many-hour workload. This short observation includes startup and a nonuniform query mix; it is not a controlled speedup measurement or a reliable completion-time prediction. No extra performance qualification or partial-AP selection was performed.
+
+Three completed adaptive traces expose the following existing timers. All their stages used 24-digit certification. The remainder includes certification, precision correction and other solver work; it is not a profile of a single function.
+
+| Query | Candidate generation (s) | Solver total (s) | Candidate share | Solver speedup ceiling if candidate time alone vanished |
+|---|---:|---:|---:|---:|
+| 564 | 428.572 | 912.404 | 46.97% | 1.89x |
+| 565 | 404.473 | 807.490 | 50.09% | 2.00x |
+| 577 | 679.491 | 1174.189 | 57.87% | 2.37x |
+
+The last column is `solver_total / (solver_total - candidate_time)`, an optimistic bound for accelerating **only candidate generation**. It is not a measured GPU result or a limit on implementations that also accelerate other work. GPU transfer, precision and launch costs can reduce the attainable gain. Porting the candidate solver alone does not resolve this implementation's overall cost.
+
+The next internal-theory investigation should preserve a quadratic objective and a linear solve at each original stage, with GPU-compatible numerical operations. Avoid adding nonlinear Newton iterations or another original solve solely to define a scale. First derive the mechanism, solvability and computational cost; then implement the selected hypothesis and run the formal comparison. This is a design constraint, not an already validated replacement model or an accuracy promise. Do not revive stopped graph-calibration, frontier or depth modifications under a new name. The current objective and correctness thresholds remain unchanged in the preserved implementation.
