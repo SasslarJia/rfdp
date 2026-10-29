@@ -1,0 +1,5 @@
+{
+  "mat": "/root/autodl-tmp/rfdp-reliability-market-20261015/v2/features/test-osnet.mat",
+  "baseline_queries": "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.per-query.json",
+  "baseline_summary": "/root/autodl-tmp/rfdp-graph-routes-20261026/baselines/dynamic-depth-500.json"
+}

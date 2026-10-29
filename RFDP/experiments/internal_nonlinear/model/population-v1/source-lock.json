@@ -1,0 +1,18 @@
+{
+  "files": {
+    "analysis-inputs.json": "b3b90a75b9080e91afb6c54b1cd3d2eb192c24c208affba277e8c709927ba22c",
+    "launch.sh": "a7ff44d9e07637ae98422296729ebcbc2fc20c5ecdb523bc8b38ce5b211e0f43",
+    "references.json": "9b5df482f1e3e89f1cd3cdc749f646b4e8616c3faa3fb9999221de0b38dbc8c9",
+    "config.json": "d26090a1ede1e45aa0e0ebab006ab2682651102deee16928fb576923b54825e5",
+    "full.py": "d75f1081dce6ecdb155a42abe4ff7e214b9393aa3ecf8ccc603e16ef63982193",
+    "model_loader.py": "cee05f53ba6e59cc0b60bade78a8a6f63a7a0dab2e2aac66fa54386c5c3d73b5",
+    "verify_artifact.py": "b2370a25ed6e6fcfcf087660615632364f62b915e4e16ac111fa69108ce13085",
+    "protocol.md": "7393bc981505019cc25ea8270e39b9791d968836af44238d230b2bac9b6bce0c"
+  },
+  "dependencies": {
+    "../runner-interface-v1/internal_adapter.py": "4107bd97bba0fa71c97f491aff16cd7970a2c55bd616909094ed4bdfda2f33a0",
+    "../scalable-certificate-v1/scalable_certificate.py": "ff1d4957157a5a03f05449f0ee17e3640cc4c1f4a6eb1159e376ba27a208a245",
+    "../sparse-certificate-v1/sparse_solver.py": "9d5386b4d60c2c1cbe0dd312fc7ea3033f4c8ac38981d2bdae215f9761cf872d",
+    "../sparse-certificate-v1/certificate.py": "4550053ef0b1756899ed7f2e77f26045004ce2295e974c2606bd994f59781e75"
+  }
+}

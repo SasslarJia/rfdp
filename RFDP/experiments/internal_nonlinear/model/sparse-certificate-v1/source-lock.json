@@ -1,0 +1,39 @@
+{
+  "created": "2026-10-28T18:18:57.763875+08:00",
+  "scope": "Sparse implementation and <=64-node exact-input nonlinear certificates, not retrieval qualification",
+  "parent_source_lock_sha256": "900356bef3f001943238783d1aed97b8c19c7bc2296e27aa6f03ac443bfb159b",
+  "reference_original_adapter": {
+    "path": "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/accurate_hybrid.py",
+    "sha256": "c7b0d16d0b1c6fc421323bd6ab2ab12f0fe3d42db554175846b864e1ab03b667"
+  },
+  "files": {
+    "certificate.py": {
+      "bytes": 7592,
+      "sha256": "4550053ef0b1756899ed7f2e77f26045004ce2295e974c2606bd994f59781e75"
+    },
+    "check_sparse.py": {
+      "bytes": 4823,
+      "sha256": "52cd8100b24e89e19e1a2cc3ca3646e4bddb464a81bcdc1835fd3f29a6969c69"
+    },
+    "monitor-1806.json": {
+      "bytes": 5501,
+      "sha256": "67c5648d1df265663e8720304f1bf70f99c91fe190e1a5a71b27bfc1bdabe872"
+    },
+    "qualification.json": {
+      "bytes": 7951,
+      "sha256": "0b72e2bd314fffc6b96746d055ab2a5102f5dfce20b98b12802fc05a20031c38"
+    },
+    "requirements.txt": {
+      "bytes": 14,
+      "sha256": "a699f46ed76bd216f1081b6b2330e4fb45d7c8c5a5354b208694d6590a5a8645"
+    },
+    "review.json": {
+      "bytes": 4454,
+      "sha256": "6a4c04a4e2f962004cd3d819cd035b7bbf861a8e0f91a704bfc46b743c8bd639"
+    },
+    "sparse_solver.py": {
+      "bytes": 4201,
+      "sha256": "9d5386b4d60c2c1cbe0dd312fc7ea3033f4c8ac38981d2bdae215f9761cf872d"
+    }
+  }
+}

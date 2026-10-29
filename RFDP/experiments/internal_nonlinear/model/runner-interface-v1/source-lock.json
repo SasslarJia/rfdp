@@ -1,0 +1,57 @@
+{
+  "created": "2026-10-28T19:17:06.136454+08:00",
+  "scope": "Original outer-loop synthetic solver integration; not real query qualification",
+  "files": {
+    "FAILED-191208.json": {
+      "bytes": 865,
+      "sha256": "03a663a4d69b97f09cf1929bb6ab1bcdfee7aed92a34afc4de4a7e4316432164"
+    },
+    "attempt-1-diagnosis.json": {
+      "bytes": 621,
+      "sha256": "2956a9d152110b0e37b3743d20eaa9764b5aac828a87cbc453794f61799013fd"
+    },
+    "check_interface-attempt-1.py": {
+      "bytes": 7975,
+      "sha256": "b7b85777f702183f464214c097bf00f55848c9d383b6bfb93aa351462e2e67c7"
+    },
+    "check_interface.py": {
+      "bytes": 8239,
+      "sha256": "da4a84025e630c89074e6ce4d0a2cff2f52330185632195fae88990488e72061"
+    },
+    "internal_adapter.py": {
+      "bytes": 8649,
+      "sha256": "4107bd97bba0fa71c97f491aff16cd7970a2c55bd616909094ed4bdfda2f33a0"
+    },
+    "monitor-1906.json": {
+      "bytes": 4717,
+      "sha256": "0a33c8ce2124c92bb281e3ce8abb15227e70f705056a8e340eee29822bf5d414"
+    },
+    "qualification.json": {
+      "bytes": 3025,
+      "sha256": "c5ea810348a0f15e3731c40bc4b2f220db8b711eee73e43eef5019bf83fbb088"
+    },
+    "review.json": {
+      "bytes": 5152,
+      "sha256": "027bb62247ae9aa06df4965a308b438bc60707c8f192274ac09a424dfff9befd"
+    },
+    "synthetic-traces.json": {
+      "bytes": 343363,
+      "sha256": "ce1334619d3a81ef10f1f7a75624e0a6fa78b99b17b0ce4ddda5d56386a329b3"
+    }
+  },
+  "references": {
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/source-lock.json": "900356bef3f001943238783d1aed97b8c19c7bc2296e27aa6f03ac443bfb159b",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/sparse-certificate-v1/source-lock.json": "b431b1476106efcb7ecaeb2206b17ffe438239dc2b3c736ff8540b52cead5900",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/scalable-certificate-v1/source-lock.json": "5043f24b97113b6efaed07028e3c32695f96c58437a85a85d61fd76c01fb794b",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/scalable-certificate-v1/scalable_certificate.py": "ff1d4957157a5a03f05449f0ee17e3640cc4c1f4a6eb1159e376ba27a208a245",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/sparse-certificate-v1/sparse_solver.py": "9d5386b4d60c2c1cbe0dd312fc7ea3033f4c8ac38981d2bdae215f9761cf872d",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/source-audit/internal-nonlinear-smoothing-v1-20261028/sparse-certificate-v1/certificate.py": "4550053ef0b1756899ed7f2e77f26045004ce2295e974c2606bd994f59781e75",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/exact_hybrid_ties.py": "64efc97fcbcee1df25f56f4bf84462699d645023e5e3eb1f3fa9534ca775e719",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/fast_hybrid_certificate.py": "058f7a231e626ecec6765ba3bf069cb9aeb35b153bf9236068db2ed709ed05c1",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/reliability-market-20261015/repo/RFDP/MODEL/Paper_RFDP/PaperFullIterative.py": "14e8903d75a925c53c07dbbfd0b5888c20ab9378fbbb98bb9c17d83d5f64c965",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/reliability-market-20261015/repo/RFDP/MODEL/Paper_RFDP/PaperPrecision.py": "7cd9c025f0d0314229334b32a4f1b86b2d14b6e25c902b3826ed1cc4c313c99d",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/accurate_hybrid_ties.py": "591328e10fb5cf2b4aaf871cb1779579957da17856dff8e0022b5525ed89d3e0",
+    "/Users/jqk/Documents/school/mid-term/research/experiments/reliability-market-20261015/v2/source/high_precision_recovery.py": "ebcd958e1eb62f4ef11fbac2fbad8e064c82bde2da481fb9933d701fc7dc8fa6"
+  },
+  "old_three_locks_all_members_unchanged": true
+}

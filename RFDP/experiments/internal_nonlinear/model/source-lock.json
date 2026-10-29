@@ -1,0 +1,42 @@
+{
+  "created": "2026-10-28T17:59:43.314293+08:00",
+  "scope": "Local mathematical prototype and review, not retrieval qualification",
+  "files": {
+    "FAILED-prototype-attempt-1.json": {
+      "bytes": 1430,
+      "sha256": "27f751437ef0d7b713f944e756a695f98f94185033d07f77deac78bb38a57e4e"
+    },
+    "check_prototype.py": {
+      "bytes": 4422,
+      "sha256": "7e78c49bd429d60054ff6457d693a5b5e8cee890fbc9b7ab50b7dc2821ba7c02"
+    },
+    "model-review.json": {
+      "bytes": 5227,
+      "sha256": "af9980cecdc50bfec90dd58a4c88a52525339970410fc8ee081aa8f793c53ca2"
+    },
+    "monitor-1753.json": {
+      "bytes": 4935,
+      "sha256": "7059ba25b4e090b92f11fb57cfaa91618a9b49cad1d823df96f8ac5543d1273b"
+    },
+    "prototype.py": {
+      "bytes": 4309,
+      "sha256": "5c30a3beb496b6bb8b14f6bd025ad441519d617768fd136fe1db07409e8a4d1f"
+    },
+    "resource-review.json": {
+      "bytes": 2276,
+      "sha256": "2d2518930b6b4ad5815db8d03cefdf2e51c405773a1400f2ece1eb5e4cdf0792"
+    },
+    "sources.json": {
+      "bytes": 4765,
+      "sha256": "d219ca98bb5c6961a901e75747830243e9b12350d044d6408c18e20a626ae7cd"
+    },
+    "synthetic-results.json": {
+      "bytes": 13985,
+      "sha256": "12638bfdb40ef1c5b1c17af97c9ef7439fb23e695b5602a446a951067d2972ea"
+    },
+    "worker-history-1740.json": {
+      "bytes": 752,
+      "sha256": "da00de1ce5a6caeed72f346681b1031ea12b1285930324262f814e11666eca66"
+    }
+  }
+}

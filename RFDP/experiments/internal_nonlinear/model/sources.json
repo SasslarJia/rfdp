@@ -1,0 +1,84 @@
+{
+  "updated": "2026-10-28T17:53:45.648032+08:00",
+  "search_method": "Official conference/journal pages and primary full text; academic MCP absent; local Crossref/PubMed/arXiv preflight network unavailable. Web fallback disclosed. 2024/2025 queries also screened; generative image/graph diffusion excluded as a different problem.",
+  "sources": [
+    {
+      "id": "TWIRLS",
+      "title": "Graph Neural Networks Inspired by Classical Iterative Algorithms",
+      "authors": "Yongyi Yang et al.",
+      "venue": "ICML 2021 / PMLR 139",
+      "pages": "11773–11783",
+      "url": "https://proceedings.mlr.press/v139/yang21g.html",
+      "read_scope": "Full-text sections 3.1–3.3, equations 11–20",
+      "supports": "Nonlinear graph-smoothness energy and state-dependent propagation via variational quadratic surrogates/IRLS.",
+      "does_not_support": "Our hybrid fitting, scalar ReID score, delta rule or retrieval improvement."
+    },
+    {
+      "id": "pLaplacian",
+      "title": "p-Laplacian Based Graph Neural Networks",
+      "authors": "Guoji Fu, Peilin Zhao, Yatao Bian",
+      "venue": "ICML 2022 / PMLR 162",
+      "pages": "6878–6917",
+      "url": "https://proceedings.mlr.press/v162/fu22e.html",
+      "read_scope": "Abstract and graph gradient / normalized p-Laplacian definitions, equations 1–6",
+      "supports": "Nonlinear propagation that depends on current signal differences.",
+      "does_not_support": "Exact proposed Charbonnier mixture or an implemented p-Laplacian reproduction."
+    },
+    {
+      "id": "ElasticGNN",
+      "title": "Elastic Graph Neural Networks",
+      "authors": "Xiaorui Liu et al.",
+      "venue": "ICML 2021 / PMLR 139",
+      "pages": "6837–6849",
+      "url": "https://proceedings.mlr.press/v139/liu21k.html",
+      "read_scope": "Abstract, graph-TV definitions and formulation",
+      "supports": "Combining quadratic and edge-preserving smoothness for locally adaptive propagation.",
+      "does_not_support": "Our exact penalty or choice theta=0.5."
+    },
+    {
+      "id": "HiD-Net",
+      "title": "A Generalized Neural Diffusion Framework on Graphs",
+      "authors": "Yibo Li, Xiao Wang, Hongrui Liu, Chuan Shi",
+      "venue": "AAAI 2024, 38(8)",
+      "pages": "8707–8715",
+      "doi": "10.1609/aaai.v38i8.28716",
+      "url": "https://ojs.aaai.org/index.php/AAAI/article/view/28716",
+      "read_scope": "Primary PDF equations 6–19 and main model sections",
+      "supports": "First/second-order contextual diffusion with fidelity; recent internal propagation alternative.",
+      "decision": "Reviewed comparison, not implemented. A/A² mixture alone is not a new contribution over I-HyRDP multi-hop behavior."
+    },
+    {
+      "id": "GREAD",
+      "title": "GREAD: Graph Neural Reaction-Diffusion Networks",
+      "authors": "Jeongwhan Choi, Seoyoung Hong, Noseong Park, Sung-Bae Cho",
+      "venue": "ICML 2023 / PMLR 202",
+      "pages": "5722–5747",
+      "url": "https://proceedings.mlr.press/v202/choi23a.html",
+      "read_scope": "Section 3.3, equations 11–14 and training formulation",
+      "supports": "Reaction terms as an alternative to pure smoothing.",
+      "decision": "Not first implementation: extra learned terms/high-pass contribution require a fresh positivity and hybrid-fitting analysis."
+    },
+    {
+      "id": "Fractional",
+      "title": "A Fractional Graph Laplacian Approach to Oversmoothing",
+      "authors": "Sohir Maskey, Raffaele Paolino, Aras Bacho, Gitta Kutyniok",
+      "venue": "NeurIPS 2023",
+      "url": "https://papers.neurips.cc/paper_files/paper/2023/hash/2a514213ba899f2911723a38be8d4096-Abstract-Conference.html",
+      "read_scope": "Official abstract and introduction",
+      "supports": "Nonlocal fractional operators as an alternative internal mechanism.",
+      "decision": "Backup only; full formula/local boundary/resource review incomplete. No implementation or OOM claim."
+    },
+    {
+      "id": "TH-RDP",
+      "title": "Improving Hybrid Regularized Diffusion Processes with the Triple-Cosine Smoothness Constraint for Re-Ranking",
+      "authors": "Miao Du, Jianfeng Cai",
+      "venue": "Mathematics 2024, 12(19), 3082",
+      "doi": "10.3390/math12193082",
+      "url": "https://www.mdpi.com/2227-7390/12/19/3082",
+      "read_scope": "Existing prior audit and publisher indexed text; direct publisher read rate-limited this turn",
+      "supports": "Direct hybrid-diffusion smoothness modification reference.",
+      "decision": "Pending exact formula/domain review; not a top-venue claim, not a failed experiment."
+    }
+  ],
+  "attribution": "The new objective is a project adaptation inspired by nonlinear/robust smoothing. None of the sources is claimed to have proposed this exact I-HyRDP formulation."
+}

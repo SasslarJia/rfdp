@@ -1,0 +1,136 @@
+{
+  "repo": "/root/rfdp-stage2-20261020/repo",
+  "cache": "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache",
+  "queries": [
+    0,
+    38,
+    481,
+    962,
+    1443,
+    1924,
+    2405,
+    2886,
+    3367
+  ],
+  "neutral_references": {
+    "0": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "87673042918987782564466f07586359643f6a56c1c75c7db5bdc68966ff2a3d",
+      "rankings_sha256": "293063d8de78a5b803d4ad3f7c66f0ab3f0f31ae923628f65440f962810d4c19"
+    },
+    "38": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "fa595315bb682c7f1b94aea6f38d52e82e563edc12be3d0a6fe26eb850926f5b",
+      "rankings_sha256": "ac38e2cc124aeccb91a2ca0a290b44d2b762d3153136277c406677dc3692a336"
+    },
+    "481": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "6f9fbe4689e4d69870639a53b643db41595746d1ce91820d18115065aa02f359",
+      "rankings_sha256": "1a603f784104081c0c6ef67e0f28f0a97e09642c9f8d5ec5a5f4b9819528c6d0"
+    },
+    "962": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "26f023d88fb55357cd0674dd5e7253bc90d3fb7e1325a86ca4bf2ead35db630e",
+      "rankings_sha256": "dc236034158890473b8408c289881d06f81a213678fa8b9c8544377dc313ec40"
+    },
+    "1443": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "4bd806bbd527ddcb9a54ddbb4d92fb15eeac04d53e5b1a44c88fa7084d1e93a4",
+      "rankings_sha256": "f67a5d5e6982d2e712e43190932b1f40f85c6f7c7e369b712851d3a296e78044"
+    },
+    "1924": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "d163cb98f70ddac108b7a3b58deb8f59853da36c8394237b695bf532dc5e7441",
+      "rankings_sha256": "91548eda72a116c0aa63ea65a236d80f2a2d8205e111d37150e83a4a3d144022"
+    },
+    "2405": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "189d5c8fd0f822835a01b17b115d132a612aff987c918d679a3f3db409946e73",
+      "rankings_sha256": "b6e3693a30cc0a37c9000baeed2848525b02cc0548a25b602bcfb01e136462b0"
+    },
+    "2886": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "e2427ee857722921633384df9d4aece02ce724ea62ee205affff1dbf908cdd5e",
+      "rankings_sha256": "ce984d2424fa57617d8bf541fca12b1c7f60eba37f42dba67b533649f007b196"
+    },
+    "3367": {
+      "signature": "f455aa105a3901ff6a6e5023e505244f561bb4082496b053aeedd4d9e2add176",
+      "prefix_sha256": "3af6f333f96ae50a7a1ab111954625c273630417d229cbfbb65dbcb9641745f5",
+      "rankings_sha256": "97ed4da81e089293341289084b28c27c170c3c50cb015c7ba90b65c2ab95a005"
+    }
+  },
+  "neutral_reference_directory": "/root/autodl-tmp/rfdp-graph-routes-20261026/camera-balanced-eta0-qualification",
+  "thetas": [
+    0.0,
+    0.5
+  ],
+  "locked_files": {
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/AffXfrm.py": "ae4280a67c167228951c8eb255db5a7f46402cbe4bdb3351d893d8caf88c0f00",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/CnctCpnt.py": "3f7c703042470031136d16323a7ab0f301871f9f68126e641ff675d109766f5a",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/Compose.py": "ef1f6dc6023dfe82d5ac69e888a96fc511b2a556107a8be72c87d38abef94652",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/Dist2Aff.py": "150da209890283e3747e2e9cbe4b8a73e8e9497ae24a71a8d2ce4ab4265048f7",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/KnnRstct.py": "7ba89029a05ff3448eb1175c3e4d0287dcf887aa5179d4544aff1bbd7c8a0b98",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Aff_RFDP/__init__.py": "b3ff9e42cb36b1b2d03a734e18c0021a57c49eb848719b7992128ff5c4ace452",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Asst_RFDP/OperAsst.py": "6d8b69047a826cc92680ccd44e285fb3bbbc9df94ac574fff66387bafc08424a",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Asst_RFDP/OperAsstNumpy.py": "2541c98be790454e6ff31e50c1fbc2060891d0a1db15927016be36dc63b24bc5",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Asst_RFDP/OperAsstTorch.py": "1e8d5fede7f50fecddfb3bc55c5fe72126583dee9033b19664ca5f7f42f0aa47",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Asst_RFDP/ProcAsst.py": "5fafcdd37fe1cabfaa8bc4138fd8197846218ca00cd06edfb6f428310a0f9393",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Asst_RFDP/__init__.py": "ac8bb4854d58471967343558738a8a3180d9dfae3fc03696f9072be13902e2f1",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Enum_RFDP/AjcnEnum.py": "41f5cf83f01954037a308bdc09825bb1738405fa528d94102df2ad6c19b8412c",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Enum_RFDP/DimEnum.py": "7660c410f6328493b1d647de2e3db2e3a4cf397dae7022bafa11586a5e509936",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Enum_RFDP/KnnEnum.py": "1be0b8821cf2baba192195d45134885a9b6967f4c55dc3d97af3ba7c6075eb09",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Enum_RFDP/LogTypeEnum.py": "4c07313c673be8b7193ceaaf2f7441e448443fb44c12ecb2591359421a2edd10",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Enum_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/FitCstr.py": "285d95deb845717297451ae4d1dc22c8af07fabae1352f6f3c04be1450caba1f",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/HyDiffFC.py": "032903f9c3d7986e7b58082ee5866542c77d56dfc80dde4744fbe21d8aa1708a",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/HyFC.py": "aa3846f18fba225d9682e3fef9fcd523294be40cea30fa7bffbf6ecd1943e1c0",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/HyIdtFC.py": "dc4357ab72da63fa1a4f89dac3a469cf7393c82c526257657d339afdd88c305f",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/OazFC.py": "f95305f29eadfdfd99813002543cd3acf514f8f1f1b340c25372095fea947bf3",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/WgtFC.py": "16ce793a2d98047e15a9632243f8bd6109621c41c122538054a4d2dfa0723b1b",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Fit_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Frmwk_RFDP/Rfdp.py": "3a9336411e7fafe16c8da0ef29116aec8722beef42c33121709aa0e25e53a577",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Frmwk_RFDP/RfdpCtofOtcm.py": "2b6d17508c511cd202cee7925bafa3b6f1277f9e569e26c86fb5050917821e27",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Frmwk_RFDP/RfdpSuplExtn.py": "f67c9f06b8e10421e0419d420b9376fdcec4238f52669c832b4c13e02777dfa0",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Frmwk_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Iput_RFDP/IputLyr.py": "2de2dc2e153684bea482c81c3da1ee40a92dfe3707fd168c7360cafdea04be74",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Iput_RFDP/IputWhl.py": "5734ba9cb9bbe7f3121532b485277b0ca3c8b62ee7b48dcff6ade2381685ac1d",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Iput_RFDP/MdlIput.py": "3d7dd4c11d4034ba422579bbb6c970f2d8c1b6ea46b545e5cf03bce75f035dfa",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Iput_RFDP/Qry2Blk.py": "59c7dd44621dd6a9d24e03a196ee2f817d3ec36928359157b2e05019f9f73eb1",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Iput_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperCamera.py": "34808ede455f7fc2f3915ff7a80f0aa5aa57f3063c97edc9453cc567cfc94d87",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperFullIterative.py": "14e8903d75a925c53c07dbbfd0b5888c20ab9378fbbb98bb9c17d83d5f64c965",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperIterative.py": "fc6ac90dbecbd9fb5fd17160f3f7743f08dadd6557e550e1fff702fb57e14ea4",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperPrecision.py": "7cd9c025f0d0314229334b32a4f1b86b2d14b6e25c902b3826ed1cc4c313c99d",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperProblem.py": "6f94f052a5b22883fd1ec82e52898515d611194b108e1c85fc8d2f9581f847c5",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperRanker.py": "4a537f306c1e3d52d0428a2d8389230e954bb062a7a40e26d350efc775a1dc45",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperSolvers.py": "13042b6b5882c554cfb849837365894c3d610f4c177307055fd835e8d2b836f7",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/PaperUtils.py": "98d1518f7cf02a57a08188009c77352ee65ea26ce5e522785eb2d17616e77e23",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Paper_RFDP/__init__.py": "b48718539f24021614c7d3b6566d7be8537435a6e011acd4c26f4cfd3dcccc4d",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Smth_RFDP/InclangSC.py": "a768bc1ca5f97282ffeb1b71c4d23ec0b2ec250993b756c07893e182a9c6e16c",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Smth_RFDP/PairwiseSC.py": "1e6daea204ffdc8bdcc471d1b2fd1cbab86f800c69b3a9d33def4fb710bfe3b2",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Smth_RFDP/SmthCstr.py": "da1c39462531c0cad5eecbfcd65fcf5f92cc790249b50c665bfe9324cd4869eb",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Smth_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/AdpSol.py": "5083dd4dd84bd31e433a7fcbd1b88ec3594edc110449f6d3106167e8dc987b5e",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/ItrtExpGrw.py": "8f72a9f6f8fadb4af465342754882ba1440593e47c3aca941ad411ea71deb032",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/ItrtLinGrw.py": "2d98aa5cbd76417782162efac75dd0aaae0a579f13b78e3f244ba542fb949078",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/ItrtSol.py": "3d4945792de663843ec9c7ca88ded07035390db0b5b245b9c835171d7e882812",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/SolProc.py": "ec97bc95170eb1f08649c42d1f93ed09a5b242bfb3d041c4b47cb169e4a42da9",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/Sol_RFDP/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/MODEL/__init__.py": "a531fa16eeebd17fa05059e7b5bf5475bdc8967e170f2489652f3a40057e4728",
+    "/root/rfdp-stage2-20261020/repo/RFDP/Test_RFDP/reid_paper_experiment.py": "4088a2d0f2be4433006a4b76736433cdde213d7afe2be8591bc13a2065668cf3",
+    "/root/rfdp-stage2-20261020/repo/RFDP/EVAL/EvalPrcsRcal.py": "9d4ea6f7a81b316115c38c9a7b3102470fe1338b451cbee22c70aa52f48ee65b",
+    "/root/rfdp-stage2-20261020/repo/RFDP/EVAL/ReIDEval.py": "3f50698ee72d7ef0e0126d3bbb67b1978fd19c8eca9abf5a73ead930794110dc",
+    "/root/rfdp-stage2-20261020/repo/RFDP/EVAL/RefRslt.py": "402d7328470715c469c5b42a0af8e6124fcd51668a3b9e69a95dad023f01d8d7",
+    "/root/rfdp-stage2-20261020/repo/RFDP/EVAL/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/root/rfdp-stage2-20261020/repo/RFDP/experiments/full_reid/common.py": "e827f2172e7d9c5bf2b3eb31ce6f242ed1b7f73d389b479f3a8c24b96e6225c9",
+    "/root/rfdp-stage2-20261020/repo/RFDP/experiments/reliability/high_precision_recovery.py": "ebcd958e1eb62f4ef11fbac2fbad8e064c82bde2da481fb9933d701fc7dc8fa6",
+    "/root/rfdp-stage2-20261020/repo/RFDP/experiments/full_reid/build_feature_cache.py": "a21fdd12adeae1353c3e6a855ce189fae685637b3e5da88ebd92b043c89c725c",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/features.npy": "8b290bcd696e0925dc627382f8f74630ec1cbe0a8186d63e3cc11945013f3aa1",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/affinity.npy": "6a1ae9a25cccff26997877431f72055c23445aa0b898a745efffbfe7a6ba43da",
+    "/root/rfdp-stage2-20261020/early-osnet-official-v1/inputs/cache/graph.npz": "3464ff8e0b6dc0d821fc7ef92366066d486bcd1588a427eb4787a38a41ca0617",
+    "/root/autodl-tmp/rfdp-graph-routes-20261026/accurate_hybrid_ties.py": "591328e10fb5cf2b4aaf871cb1779579957da17856dff8e0022b5525ed89d3e0",
+    "/root/autodl-tmp/rfdp-graph-routes-20261026/exact_hybrid_ties.py": "64efc97fcbcee1df25f56f4bf84462699d645023e5e3eb1f3fa9534ca775e719",
+    "/root/autodl-tmp/rfdp-graph-routes-20261026/fast_hybrid_certificate.py": "058f7a231e626ecec6765ba3bf069cb9aeb35b153bf9236068db2ed709ed05c1"
+  },
+  "original_reference_manifest": "cas-implementation-v1-20261028/retrieval-qualification-v1/references.json"
+}

@@ -1,0 +1,57 @@
+{
+  "created": "2026-10-28T18:47:48.875979+08:00",
+  "scope": "Scalable sparse exact-input nonlinear certificates and targeted refinement/tie tests; not real retrieval",
+  "files": {
+    "check_scalable.py": {
+      "bytes": 4889,
+      "sha256": "d93d13f42911d5057aab8b027e0a94334f42d7942513eda8f8e9ecf0689eb09e"
+    },
+    "check_targeted.py": {
+      "bytes": 2242,
+      "sha256": "cee2000df2ff9d40e0cb1bd9916b195dedc079e0f8ae0213b2458d0c97b7dcbb"
+    },
+    "monitor-1839.json": {
+      "bytes": 619,
+      "sha256": "ba7cf4f8efbba682cee7dbf6437137f78b33c933b1d9125f1bb60140c2f4151f"
+    },
+    "qualification.json": {
+      "bytes": 13687,
+      "sha256": "b9546d6a2ab486da0bdcb89565445ffc9597d81e7beef8c82a659a7c4f86aeb3"
+    },
+    "review.json": {
+      "bytes": 5559,
+      "sha256": "6a470052aaa17f60edc1ed41dd7eaf52f254911807ab85aca7e8ac3a2f40eb9a"
+    },
+    "scalable_certificate.py": {
+      "bytes": 10696,
+      "sha256": "ff1d4957157a5a03f05449f0ee17e3640cc4c1f4a6eb1159e376ba27a208a245"
+    },
+    "targeted-results.json": {
+      "bytes": 3683,
+      "sha256": "30d37c04ea1261a1e246b21b1d099b5bcc8961eb89d625201c7733d879ad118c"
+    }
+  },
+  "references": {
+    "source-lock.json": {
+      "bytes": 1414,
+      "sha256": "900356bef3f001943238783d1aed97b8c19c7bc2296e27aa6f03ac443bfb159b"
+    },
+    "sparse-certificate-v1/source-lock.json": {
+      "bytes": 1468,
+      "sha256": "b431b1476106efcb7ecaeb2206b17ffe438239dc2b3c736ff8540b52cead5900"
+    },
+    "sparse-certificate-v1/certificate.py": {
+      "bytes": 7592,
+      "sha256": "4550053ef0b1756899ed7f2e77f26045004ce2295e974c2606bd994f59781e75"
+    },
+    "sparse-certificate-v1/sparse_solver.py": {
+      "bytes": 4201,
+      "sha256": "9d5386b4d60c2c1cbe0dd312fc7ea3033f4c8ac38981d2bdae215f9761cf872d"
+    },
+    "original_accurate_hybrid": {
+      "path": "/Users/jqk/Documents/school/mid-term/research/experiments/graph-routes-20261026/accurate_hybrid.py",
+      "sha256": "c7b0d16d0b1c6fc421323bd6ab2ab12f0fe3d42db554175846b864e1ab03b667"
+    }
+  },
+  "old_locks_all_members_unchanged": true
+}

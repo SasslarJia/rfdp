@@ -1,0 +1,20 @@
+{
+  "method": "I-HyRDP internal nonlinear smoothing",
+  "theta": 0.5,
+  "delta": "fixed within stage; weighted RMS of exact original hybrid solution edge differences",
+  "alpha": 5,
+  "beta": 25,
+  "step": 5,
+  "depth": 500,
+  "k": 20,
+  "gamma": 0.4,
+  "queries": 3368,
+  "gallery": 19732,
+  "workers": 16,
+  "blas_threads": 1,
+  "additional_performance_qualification": false,
+  "output_budget_bytes": 42949672960,
+  "worker_address_space_limit_bytes": 4294967296,
+  "source_graph_unchanged": true,
+  "labels_used_only_after_population_complete": true
+}

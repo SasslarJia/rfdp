@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.log
+*.npy
+*.npz
+*.gz
+*.exit
+*.lock
+attempt-*/
+correctness.json
+resume-readback-check.json
+saved-stages-check.json
+synthetic-results.json
+synthetic-traces.json
+qualification.json
+targeted-results.json
+FAILED*.json
