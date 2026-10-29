@@ -16,6 +16,15 @@ from .certified import solve, unpack
 from .full import sha, dump, now
 
 
+def load_query_reference(path):
+    """Read either preserved baseline schema without changing its source file."""
+    data = json.loads(Path(path).read_text())
+    rows = data['queries'] if 'queries' in data else data['per_query']
+    assert isinstance(rows, list) and rows
+    assert all(row['query_id'] == i for i, row in enumerate(rows)), 'Reference query order'
+    return rows
+
+
 def initialize(config):
     global CFG, GRAPH, LABELS, CAMS, CANDIDATE, BASELINE
     resource.setrlimit(resource.RLIMIT_AS, (2**30, 2**30))
@@ -25,7 +34,8 @@ def initialize(config):
     LABELS = np.concatenate([data[k].ravel() for k in ('query_label', 'gallery_label')])
     CAMS = np.concatenate([data[k].ravel() for k in ('query_cam', 'gallery_cam')])
     CANDIDATE = json.loads((Path(config['output'])/'metrics.json').read_text())['per_query']
-    BASELINE = json.loads(Path(config['baseline_queries']).read_text())['queries']
+    BASELINE = load_query_reference(config['baseline_queries'])
+    assert len(BASELINE) == len(CANDIDATE) == config['queries']
 
 
 def compare(query):
