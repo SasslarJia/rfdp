@@ -1,0 +1,84 @@
+{
+  "time": "2026-10-29T16:44:37.998018+08:00",
+  "scope": "all queries, at most first five batches, stop at first divergence",
+  "causal_claim": false,
+  "original_full_trajectory_reconstructed": false,
+  "accepted_run_sha256": "15388cb57cf04be169c3d5c5f0df92bdc69aaf24ef5f981e3c8fe7659db04afd",
+  "p_quantiles": [
+    0.000012297054810869467,
+    0.00032935895387756437,
+    0.0013035925395442657,
+    0.02441130176509277,
+    0.3111275199421816,
+    0.4495649227260653
+  ],
+  "fraction_direct_p_below_0p1": 0.9465394053117783,
+  "mean_direct_source_increment": 19.657112052629905,
+  "groups": {
+    "all": {
+      "queries": 3368,
+      "diverged_within_first_five": 3123,
+      "ordered_divergence_histogram": {
+        "0": 1239,
+        "1": 1054,
+        "2": 483,
+        "3": 228,
+        "4": 119
+      },
+      "changed_sets": 1692,
+      "removed_true": 1474,
+      "added_true": 1424,
+      "removed_cross_camera": 1343,
+      "added_cross_camera": 1198
+    },
+    "AP_down": {
+      "queries": 333,
+      "diverged_within_first_five": 312,
+      "ordered_divergence_histogram": {
+        "0": 118,
+        "1": 103,
+        "2": 57,
+        "3": 17,
+        "4": 17
+      },
+      "changed_sets": 171,
+      "removed_true": 123,
+      "added_true": 80,
+      "removed_cross_camera": 109,
+      "added_cross_camera": 62
+    },
+    "AP_up": {
+      "queries": 323,
+      "diverged_within_first_five": 315,
+      "ordered_divergence_histogram": {
+        "0": 104,
+        "1": 125,
+        "2": 56,
+        "3": 22,
+        "4": 8
+      },
+      "changed_sets": 169,
+      "removed_true": 110,
+      "added_true": 157,
+      "removed_cross_camera": 106,
+      "added_cross_camera": 138
+    },
+    "AP_same": {
+      "queries": 2712,
+      "diverged_within_first_five": 2496,
+      "ordered_divergence_histogram": {
+        "0": 1017,
+        "1": 826,
+        "2": 370,
+        "3": 189,
+        "4": 94
+      },
+      "changed_sets": 1352,
+      "removed_true": 1241,
+      "added_true": 1187,
+      "removed_cross_camera": 1128,
+      "added_cross_camera": 998
+    }
+  },
+  "query_details_sha256": "8eeb839016579016a79acdccb1b2de4379851d2c4365b6cbd9b134a5e7bbf55a"
+}

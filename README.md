@@ -16,6 +16,7 @@ repository does not train a new backbone.
 | `RFDP/experiments/full_reid/` | Full-query input preparation, original methods and fixed comparison implementations |
 | `RFDP/experiments/reliability/` | Accepted CSW + ordinary neighbourhood-support model and mechanism controls |
 | `RFDP/experiments/continuous_fitting/` | Certified quadratic fitting experiment; full Market accepted, no accuracy gain |
+| `RFDP/experiments/boundary_odds/` | Current target-preserving boundary-mass hypothesis; uses the shared quadratic runner |
 | `RFDP/experiments/internal_nonlinear/` | Frozen nonlinear experiment and cost review; population computation is paused |
 | `RFDP/Test_RFDP/` | Correctness tests and small illustrative entry points |
 | `docs/` | Reproduction instructions and historical source provenance |
@@ -41,7 +42,11 @@ expected original direct/indirect cost under the boundary transition probability
 The certified runner follows a [fixed full-query protocol](RFDP/experiments/continuous_fitting/PROTOCOL.md).
 All stages completed with exit 0: mAP 93.023429% and Rank-1 94.952494%,
 both below original I-HyRDP. See the [result](RFDP/experiments/continuous_fitting/result.json).
-No further run is queued for this form; the next mechanism decision remains open.
+No further run is queued for this form. The completed common-prefix diagnosis
+supports retaining the original direct target. The next fixed experiment is
+[target-preserving boundary-mass fitting](RFDP/experiments/boundary_odds/README.md):
+one sparse linear solve per stage, no new strength parameter. Its coefficient
+derivation and limitations are documented; retrieval gain remains unestablished.
 Checking out this branch does not start computation; execution uses an explicit
 configuration with frozen commit and input hashes.
 

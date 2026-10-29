@@ -16,7 +16,7 @@ from scipy.sparse.linalg import cg, splu
 from experiments.internal_nonlinear.runtime import accurate_hybrid_ties as original
 from .model import assemble_system
 
-SOLVER_ID = 'continuous-fitting-certified-v1'
+SOLVER_ID = 'quadratic-fitting-certified-v2'
 TOL = 1e-8
 PRECISIONS = (24, 40, 80, 120)
 EVENTS = []
@@ -72,12 +72,18 @@ def fast_certificate(w, e, alpha, beta, scores, source):
             lu[i] = up(lu[i]+up(weight*up(zu[i]-zl[j])))
         dl = np.maximum(0., down(down(down(alpha*hl)*e)/up(hu+e)))
         du = up(up(up(alpha*hu)*e)/down(hl+e))
+        if source == 'boundary_odds':
+            dl = np.maximum(0., down(alpha*e)); du = up(alpha*e)
         dl[e == 0] = 0.; du[e == 0] = 0.
         nl = down(ll+down(dl*zl)); nu = up(lu+up(du*zu))
         al = np.minimum(down(nl/rl), down(nl/ru))
         au = np.maximum(up(nu/rl), up(nu/ru))
         if source == 'original':
             bl = bu = np.where(e > 0, alpha, beta)
+        elif source == 'boundary_odds':
+            bl = down(alpha*down(1.+down(e/hu)))
+            bu = up(alpha*up(1.+up(e/hl)))
+            bl[e == 0] = beta; bu[e == 0] = beta
         else:
             # p is enclosed directly; intersect only its proven probability range.
             pl = np.maximum(0., down(e/up(hu+e)))
@@ -102,6 +108,17 @@ class Block(original.Block):
         if source == 'continuous':
             self.b = [(mp.mpf(alpha)*t+mp.mpf(beta)*h)/(h+t)
                       for h, t in zip(self.h, self.ee)]
+        elif source == 'boundary_odds':
+            self.b = [mp.mpf(alpha)*(h+t)/h if t > 0 else mp.mpf(beta)
+                      for h, t in zip(self.h, self.ee)]
+
+    def coefficients(self):
+        if self.source != 'boundary_odds': return super().coefficients()
+        return [mp.sqrt(h) for h in self.h], [mp.mpf(self.alpha)*t for t in self.ee]
+
+    def rounded_matrix(self):
+        if self.source != 'boundary_odds': return super().rounded_matrix()
+        return assemble_system(self.w, self.e, self.alpha, self.beta, self.source).matrix.tocsc()
 
     def certify(self, scores, dps):
         previous = mp.iv.dps; mp.iv.dps = dps
@@ -113,6 +130,10 @@ class Block(original.Block):
             b = ([point(self.alpha if t > 0 else self.beta) for t in self.ee]
                  if self.source == 'original' else
                  [(point(self.alpha)*t+point(self.beta)*v)/(v+t) for v, t in zip(h, ee)])
+            if self.source == 'boundary_odds':
+                d = [point(self.alpha)*t for t in ee]
+                b = [point(self.alpha)*(v+t)/v if exact > 0 else point(self.beta)
+                     for v,t,exact in zip(h,ee,self.ee)]
             xx = [point(v) for v in scores]; z = [v/r for v, r in zip(xx, root)]
             residual = []
             for i, row in enumerate(self.rows):
@@ -157,7 +178,7 @@ def check_order(w, e, values, cert, canonicalize=False):
 def certify_saved(w, e, values, alpha=5., beta=25., source='continuous'):
     """Check actual stored points; never solve, refine or replace them."""
     w, e, _, _ = original.validate(w, e, alpha, beta)
-    if source not in ('original', 'continuous') or len(values) != len(e):
+    if source not in ('original', 'continuous', 'boundary_odds') or len(values) != len(e):
         raise ValueError('Invalid source or score count')
     cert = fast_certificate(w, e, alpha, beta, values, source)
     checked = None if cert is None else check_order(w, e, values, cert)

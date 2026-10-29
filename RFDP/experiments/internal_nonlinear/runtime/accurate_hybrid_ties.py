@@ -150,12 +150,16 @@ class Block:
         finally:
             mp.iv.dps = old_dps
 
+    def rounded_matrix(self):
+        """Float64 correction matrix; subclasses must match their own equation."""
+        h = np.asarray(self.w.sum(1)).ravel()
+        dh = sparse.diags(1/np.sqrt(h))
+        return (sparse.diags(1+self.alpha*self.e/(h+self.e))-dh@self.w@dh).tocsc()
+
     def solve(self, initial, dps):
         """Accurate residual correction, with bounded dense MP fallback."""
         target = mp.power(10, -min(60, dps//2))
-        h = np.asarray(self.w.sum(1)).ravel()
-        dh = sparse.diags(1/np.sqrt(h))
-        rounded = (sparse.diags(1+self.alpha*self.e/(h+self.e))-dh@self.w@dh).tocsc()
+        rounded = self.rounded_matrix()
         history = []
         try:
             with warnings.catch_warnings():

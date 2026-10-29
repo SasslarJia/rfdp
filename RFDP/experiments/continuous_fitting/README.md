@@ -1,5 +1,12 @@
 # Continuous hybrid fitting: a quadratic candidate
 
+This fixed form is stopped after its complete result. The bounded all-query
+common-prefix diagnosis is recorded in [diagnosis.json](diagnosis.json).
+The next model is [target-preserving boundary-mass fitting](../boundary_odds/README.md).
+The code in this directory is reused as a shared quadratic runner, with an
+explicit model key and matching equation certificate; the old run remains bound
+to its frozen execution commit.
+
 **Status: full Market run accepted; no accuracy gain.** All 3368 queries,
 paired analysis and saved-score read-back completed successfully on 2026-10-29
 at 14:33 +08:00, using execution commit `4cb6f46`. No computation is currently

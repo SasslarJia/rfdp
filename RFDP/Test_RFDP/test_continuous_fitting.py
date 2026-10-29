@@ -150,6 +150,12 @@ class CertifiedFittingTests(unittest.TestCase):
         self.assertGreater(event['dps'],0)
 
     def test_actual_rank_and_independent_trajectory_readback(self):
+        self.check_rank_readback('continuous')
+
+    def test_boundary_odds_rank_and_independent_trajectory_readback(self):
+        self.check_rank_readback('boundary_odds')
+
+    def check_rank_readback(self, source):
         import copy
         import json
         from MODEL.Paper_RFDP import PaperFullIterative as mod
@@ -169,12 +175,12 @@ class CertifiedFittingTests(unittest.TestCase):
         from experiments.continuous_fitting import full as runner
         from experiments.continuous_fitting.verify import read_rows
         graph=sparse.csr_matrix(w); similarity=full[0]; cert.EVENTS.clear()
-        old=cert.install()
+        old=cert.install(source)
         try:
             with tempfile.TemporaryDirectory() as td:
                 out=Path(td);(out/'queries').mkdir();(out/'accepted').mkdir()
                 runner.OUT=out;runner.QN=1;runner.GN=n-1
-                runner.CFG={'source':'continuous','depth':16};runner.SIG='synthetic'
+                runner.CFG={'source':source,'depth':16};runner.SIG='synthetic'
                 runner.GRAPH=graph;runner.FULL=full
                 # Exact chosen similarity row without needing an affinity=XX^T fixture.
                 runner.X=np.eye(n);runner.INIT_ERROR=None
@@ -189,12 +195,12 @@ class CertifiedFittingTests(unittest.TestCase):
                 similarity=runner.X@runner.X[0]
                 diag=row['diagnostics']
         finally:mod.solve_hybrid_sparse=old
-        result=verify_query(graph,full,similarity,0,prefix,rank,rows,'continuous',1,16)
+        result=verify_query(graph,full,similarity,0,prefix,rank,rows,source,1,16)
         self.assertGreater(result['bridge_events'],0)
         self.assertEqual(result['solver_calls'],diag['solver_calls'])
         damaged=copy.deepcopy(rows);damaged[0]['selected'][0]=16
-        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,damaged,'continuous',1,16)
-        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,rows[:-1],'continuous',1,16)
+        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,damaged,source,1,16)
+        with self.assertRaises(AssertionError):verify_query(graph,full,similarity,0,prefix,rank,rows[:-1],source,1,16)
 
 
 if __name__ == '__main__':

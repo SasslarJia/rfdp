@@ -1,9 +1,4 @@
-"""Assemble a quadratic continuous-fitting hypothesis, not a production ranker.
-
-The stage matrix is the original HyRDP matrix. Only the source changes.
-No ranking certificate, deployment, dataset loading or performance claim is made
-by this small mathematical implementation. See README.md for the energy.
-"""
+"""Quadratic HyRDP fitting systems; see each model's derivation and protocol."""
 from typing import NamedTuple
 
 import numpy as np
@@ -52,6 +47,11 @@ def assemble_system(w_uu, e_u, alpha=5., beta=25., source='continuous'):
         rhs = np.where(e > 0, alpha, beta)
     elif source == 'continuous':
         rhs = alpha * p + beta * (1. - p)
+    elif source == 'boundary_odds':
+        # Preserve the reciprocal target 1/p, replace fitting curvature p by
+        # boundary/internal mass e/h. No graph weights or indirect term change.
+        matrix = (sparse.diags(1. + alpha * e / h) - normalized).tocsr()
+        rhs = np.where(e > 0, alpha * (h + e) / h, beta)
     else:
-        raise ValueError('source must be original or continuous')
+        raise ValueError('Unknown quadratic fitting model')
     return StageSystem(matrix, rhs, p)
