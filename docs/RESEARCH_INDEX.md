@@ -4,6 +4,7 @@
 
 ## 阅读入口
 
+- [实验基础：特征提取、关系矩阵、扩散图及原论文设置](EXPERIMENT_FOUNDATIONS.md)
 - [当前研究总结：问题、贡献、稳定条件与后续验证](../RFDP/experiments/stationary_measure/research-summary.md)
 - [当前模型与实现](../RFDP/experiments/stationary_measure/README.md)
 - [原完整ReID复现入口](FULL_REID_REPRODUCTION.md)
