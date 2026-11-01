@@ -6,6 +6,25 @@ import shutil
 from pathlib import Path
 
 
+def export_model(source, materials, target):
+    """Combine code with external frozen manifests, excluding generated outputs."""
+    if not materials.is_dir():
+        raise FileNotFoundError(f'Missing external deployment materials: {materials}')
+    artifacts = [p for p in materials.rglob('*') if p.is_file()]
+    if any(p.suffix not in {'.json', '.md'} for p in artifacts):
+        raise ValueError('Deployment materials must contain only JSON manifests and Markdown protocols')
+    target.mkdir(parents=True, exist_ok=False)
+    for path in source.rglob('*'):
+        if path.is_file() and path.suffix in {'.py', '.sh', '.txt'}:
+            destination = target / path.relative_to(source)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+    for path in artifacts:
+        destination = target / path.relative_to(materials)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, destination)
+
+
 def verify_frozen_repository(repo_root, references):
     """A cleaned working tree is not a replacement for a frozen run's inputs."""
     prefix = references['repo'].rstrip('/') + '/'
@@ -32,15 +51,18 @@ def main():
     parser.add_argument('--cache-dir', required=True, type=Path)
     parser.add_argument('--mat-file', required=True, type=Path)
     parser.add_argument('--python', required=True)
+    parser.add_argument('--materials-root', required=True, type=Path,
+                        help='External research-materials root, preserving repository-relative paths')
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     root = args.runtime_root.resolve()
     target = root / 'internal-nonlinear-smoothing-v1-20261028'
     if target.exists():
         raise FileExistsError('Export into a new location; do not overwrite a running deployment')
-    references = json.loads((here / 'model/population-adaptive-v2/references.json').read_text())
+    materials = args.materials_root.resolve() / 'RFDP/experiments/internal_nonlinear/model'
+    references = json.loads((materials / 'population-adaptive-v2/references.json').read_text())
     verify_frozen_repository(args.repo_root.resolve(), references)
-    original_inputs = json.loads((here / 'model/population-adaptive-v2/analysis-inputs.json').read_text())
+    original_inputs = json.loads((materials / 'population-adaptive-v2/analysis-inputs.json').read_text())
     mapping = {
         '/root/autodl-tmp/rfdp-graph-routes-20261026': str(root),
         '/root/rfdp-stage2-20261020/repo': str(args.repo_root.resolve()),
@@ -49,18 +71,18 @@ def main():
         '/root/miniconda3/bin/python': args.python,
     }
     # Preflight the helper files before creating the export.
-    for source in (here / 'runtime').iterdir():
+    for source in (here / 'runtime').glob('*.py'):
         existing = root / source.name
         if existing.exists() and existing.read_bytes() != source.read_bytes():
             raise FileExistsError(str(existing))
-    shutil.copytree(here / 'model', target, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+    export_model(here / 'model', materials, target)
     for path in target.rglob('*'):
         if path.is_file() and path.suffix in {'.py', '.json', '.sh', '.md', '.txt'}:
             text = path.read_text()
             for before, after in sorted(mapping.items(), key=lambda item: -len(item[0])):
                 text = text.replace(before, after)
             path.write_text(text)
-    for source in (here / 'runtime').iterdir():
+    for source in (here / 'runtime').glob('*.py'):
         shutil.copy2(source, root / source.name)
     # Re-lock only the two production packages. Earlier mathematical-check locks
     # refer to their original server evidence and are retained as provenance.
