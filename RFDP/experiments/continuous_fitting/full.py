@@ -151,7 +151,8 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
-    assert CFG['source'] in ('continuous','boundary_odds','two_step_fitting','stationary_measure') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],QN,GN,WORKERS)==(5,25,5,500,3368,19732,16)
+    assert CFG['source'] in ('continuous','boundary_odds','two_step_fitting','stationary_measure') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],WORKERS)==(5,25,5,500,16)
+    assert (QN,GN) in ((3368,19732),(2228,17661)), 'Expected complete Market1501 or DukeMTMC-reID population'
     if stage=='compute':
         assert not OUT.exists(),'New run only; no automatic overwrite or retry'
         initial=resources(reserve=True)
