@@ -47,16 +47,33 @@ def analyze_cell(cell,out):
     assert (len(qp),len(gp))==(qn,gn)
     arrays={};metrics={};position={};audits={}
     for method,entry in cell['methods'].items():
-        path=Path(entry['rankings']);a=np.load(path,mmap_mode='r');assert a.shape==(qn,gn)
+        compact=None
+        if 'positive_positions' in entry:
+            path=Path(entry['positive_positions'])
+            with gzip.open(path,'rt') as f:compact=json.load(f)
+            assert compact['shape']==[qn,gn] and compact['all_full_permutations_checked']
+            assert compact['feature_sha256']==cfg['feature_sha256']
+            assert len(compact['queries'])==qn
+            a=None
+        else:
+            path=Path(entry['rankings']);a=np.load(path,mmap_mode='r');assert a.shape==(qn,gn)
         rows=records(entry['metrics']);assert set(rows)==set(range(qn))
         current=[]
         for q in range(qn):
-            pos,by_id,ap,r1=positive_positions(a[q],q,qn,qp,qc,gp,gc)
+            if compact is None:
+                pos,by_id,ap,r1=positive_positions(a[q],q,qn,qp,qc,gp,gc)
+            else:
+                item=compact['queries'][q];assert item['query']==q
+                pos=np.asarray(item['positions']);by_id=np.asarray(item['positions_by_gallery_id'])
+                assert len(pos)==np.sum((gp==qp[q])&(gc!=qc[q])&(gp!=-1))
+                assert np.array_equal(np.sort(by_id),pos)
+                ap=float(np.mean(np.arange(1,len(pos)+1)/pos));r1=int(pos[0]==1)
             row=rows[q];assert row['pid']==int(qp[q]) and row['camid']==int(qc[q])
             assert abs(ap-row['AP'])<1e-12 and r1==row['rank1']
             current.append((pos,by_id))
         arrays[method]=a;metrics[method]=rows;position[method]=current
-        audits[method]=dict(shape=list(a.shape),rankings_sha256=sha(path),metrics_sha256=sha(entry['metrics']),
+        audits[method]=dict(shape=[qn,gn],rankings_sha256=sha(path) if compact is None else compact['rankings_sha256'],
+                            compact_positions_sha256=None if compact is None else sha(path),metrics_sha256=sha(entry['metrics']),
                             all_queries_recomputed=True,mAP=float(np.mean([r['AP'] for r in rows.values()])),
                             rank1=float(np.mean([r['rank1'] for r in rows.values()])))
     contrasts={}
