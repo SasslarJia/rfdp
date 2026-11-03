@@ -10,27 +10,28 @@ import numpy as np
 from scipy.sparse.csgraph import connected_components
 from .certified import unpack,certify_saved as certify_scores
 
-def bridge_edges(graph,full,labels,active,sums):
+def bridge_edges(graph,full,labels,active,sums,kernel=None):
     inside=np.flatnonzero(np.isin(labels,list(active)));choices=[]
     for comp in range(int(labels.max())+1):
         if comp in active:continue
         outside=np.flatnonzero(labels==comp);best=None
         for start in range(0,len(outside),128):
             ids=outside[start:start+128]
-            block=np.asarray(full[np.ix_(ids,inside)],dtype=np.float64)/sums[ids,None]
+            raw=np.asarray(full[np.ix_(ids,inside)],dtype=np.float64) if kernel is None else kernel(ids,inside)
+            block=raw/sums[ids,None]
             i,j=np.unravel_index(np.argmax(block),block.shape)
             candidate=(float(block[i,j]),int(ids[i]),int(inside[j]))
             if best is None or (-candidate[0],candidate[1:])<(-best[0],best[1:]):best=candidate
         if best is not None and best[0]>0:choices.append(best)
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
-    return [[i,j,float(full[i,j])] for _,i,j in choices[:5]]
+    return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None):
     n=graph.shape[0];prefix=list(map(int,prefix));rank=list(map(int,rank))
     assert len(prefix)==depth and prefix[0]==query and len(set(prefix))==depth
     assert all(0<=i<n for i in prefix)
     nc,labels=connected_components(graph,directed=False);sizes=np.bincount(labels)
-    sums=np.asarray(full.sum(axis=1,dtype=np.float64))
+    sums=np.asarray(full.sum(axis=1,dtype=np.float64)) if full_sums is None else full_sums
     labeled=[query];mask=np.zeros(n,dtype=bool);mask[query]=True
     boundary=np.asarray(graph[[query]].sum(axis=0)).ravel();active={int(labels[query])}
     calls=batches=no_solve=bridges=edges=0;maximum=0.;reported=0.;max_size=0
@@ -39,7 +40,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
         assert t['labeled']==labeled
         expected_bridges=[]
         if len(labeled)==int(sizes[list(active)].sum()) and len(labeled)<n:
-            expected_bridges=bridge_edges(graph,full,labels,active,sums)
+            expected_bridges=bridge_edges(graph,full,labels,active,sums,kernel)
             assert expected_bridges
         assert t['bridges']==expected_bridges
         ew=boundary.copy()

@@ -28,13 +28,23 @@ def main():
     cfg=json.loads(args.config.read_text());out=Path(cfg['output']);logs=out.with_name(out.name+'-control')
     full.configure(args.config)
     logs.mkdir(exist_ok=False)
-    stages=[('compute',[sys.executable,'-B','-m','experiments.continuous_fitting.full','compute','--config',str(args.config.resolve())]),
-            ('analysis',[sys.executable,'-B','-m','experiments.internal_nonlinear.runtime.analyze_route','--run',str(out),'--baseline-queries',cfg['baseline_queries'],'--baseline-summary',cfg['baseline_summary'],'--reference-name','original-IHy','--baseline-feature-sha',cfg['feature_sha256']]),
-            ('acceptance',[sys.executable,'-B','-m','experiments.continuous_fitting.full','acceptance','--config',str(args.config.resolve())])]
+    comparisons=cfg.get('comparisons',[dict(name='original-IHy',queries=cfg['baseline_queries'],summary=cfg['baseline_summary'])])
+    assert comparisons and len({r['name'] for r in comparisons})==len(comparisons)
+    for ref in comparisons:
+        assert ref['queries'] in cfg['input_sha256'] and ref['summary'] in cfg['input_sha256']
+    analyses=[[sys.executable,'-B','-m','experiments.internal_nonlinear.runtime.analyze_route','--run',str(out),
+               '--baseline-queries',ref['queries'],'--baseline-summary',ref['summary'],
+               '--reference-name',ref['name'],'--baseline-feature-sha',cfg['feature_sha256']] for ref in comparisons]
+    stages=[('compute',[[sys.executable,'-B','-m','experiments.continuous_fitting.full','compute','--config',str(args.config.resolve())]]),
+            ('analysis',analyses),
+            ('acceptance',[[sys.executable,'-B','-m','experiments.continuous_fitting.full','acceptance','--config',str(args.config.resolve())]])]
     rc=1
-    for stage,command in stages:
+    for stage,commands in stages:
         with (logs/(stage+'.log')).open('w') as stream:
-            try:rc=run_analysis(command,stream) if stage=='analysis' else subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT).returncode
+            try:
+                for command in commands:
+                    rc=run_analysis(command,stream) if stage=='analysis' else subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT).returncode
+                    if rc:break
             except BaseException:
                 traceback.print_exc(file=stream);rc=1
         (logs/(stage+'.exit')).write_text(str(rc)+'\n')

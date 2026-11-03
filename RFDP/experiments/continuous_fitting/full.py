@@ -2,7 +2,7 @@
 import os
 for key in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS'):
     os.environ[key]='1'
-import argparse,fcntl,gzip,hashlib,json,multiprocessing as mp,resource,shutil,signal,subprocess,sys,threading,time,traceback
+import argparse,fcntl,gzip,hashlib,io,json,multiprocessing as mp,resource,shutil,signal,subprocess,sys,threading,time,traceback
 from pathlib import Path
 import numpy as np
 from scipy import sparse
@@ -32,6 +32,9 @@ def configure(path):
     CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text());OUT=Path(CFG['output'])
     QN,GN=CFG['queries'],CFG['gallery'];WORKERS=CFG['workers']
     BUDGET=CFG['output_budget_bytes'];WORKER_AS=CFG['worker_address_space_limit_bytes']
+
+def inline_readback():
+    return CFG.get('trace_retention','all')=='sampled_after_readback'
 
 def sources():
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
@@ -65,7 +68,7 @@ def guard(stage):
     thread=threading.Thread(target=loop,daemon=True);thread.start();return stop,thread
 
 def initialize_worker(stage,config_path):
-    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR
+    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS
     INIT_ERROR=None
     try:
         configure(config_path);resource.setrlimit(resource.RLIMIT_AS,(WORKER_AS,WORKER_AS))
@@ -73,10 +76,27 @@ def initialize_worker(stage,config_path):
         FULL=np.load(cache/'affinity.npy',mmap_mode='r');X=np.load(cache/'features.npy',mmap_mode='r')
         assert FULL.shape==(QN+GN,QN+GN) and X.shape[0]==QN+GN
         SIG=json.loads((OUT/'run-manifest.json').read_text())['signature']
-        if stage=='compute':
-            from MODEL.Paper_RFDP import PaperFullIterative as model
+        READBACK_KERNEL=READBACK_SUMS=None
+        from MODEL.Paper_RFDP import PaperFullIterative as model
+        if CFG.get('relation_model','original')=='csw':
+            from experiments.stationary_measure.csw_graph import load_inputs,ReadbackKernel
+            from experiments.reliability.reliability_model import ReliabilityIHyRDP
+            cameras,support,_=load_inputs(CFG,FULL)
+            reader=ReadbackKernel(GRAPH,FULL,cameras,support,CFG['rho'],CFG['support_lambda'])
+            READBACK_KERNEL,READBACK_SUMS=reader.block,reader.sums
+            if stage=='compute':
+                certified.install(CFG['source'])
+                # load_inputs already checked full-affinity/camera/support bindings.
+                ENGINE=ReliabilityIHyRDP(GRAPH,FULL,cameras,eta=CFG['rho'],support=support,
+                    lam=CFG['support_lambda'],alpha=CFG['alpha'],beta=CFG['beta'],step=CFG['step'])
+                assert (ENGINE.w-reader.graph).nnz==0
+                assert np.array_equal(ENGINE.full_sums,READBACK_SUMS)
+            GRAPH=reader.graph
+        elif stage=='compute':
             certified.install(CFG['source'])
             ENGINE=model.FullIHyRDP(GRAPH,FULL,alpha=CFG['alpha'],beta=CFG['beta'],step=5)
+        if inline_readback() and READBACK_SUMS is None:
+            READBACK_SUMS=np.asarray(FULL.sum(axis=1,dtype=np.float64))
     except BaseException:INIT_ERROR=traceback.format_exc()
 
 def compute_query(query):
@@ -105,6 +125,17 @@ def compute_query(query):
                  peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,
                  trace_sha256=sha(trace),prefix_sha256=sha(pp),rankings_sha256=sha(rp),pid=os.getpid())
         dump(dest/f'{query:04d}.json',row)
+        if inline_readback():
+            before=time.monotonic();accepted=accept_query(query)
+            if 'error' in accepted:raise RuntimeError('Saved-score read-back failed: '+accepted['error'])
+            row['compute_seconds']=row['seconds']
+            row['readback_seconds']=time.monotonic()-before
+            row['readback_sha256']=sha(OUT/'accepted'/f'{query:04d}.json')
+            row['trace_retained']=query in CFG['retained_queries']
+            # A failed read-back leaves all its raw evidence untouched.
+            if not row['trace_retained']:trace.unlink()
+            row['seconds']=time.monotonic()-start
+            dump(dest/f'{query:04d}.json',row)
         return {k:row[k] for k in ['query','seconds','peak_rss_bytes','diagnostics','pid']}
     except BaseException:return dict(query=query,error=traceback.format_exc())
 
@@ -114,11 +145,37 @@ def accept_query(query):
         dest=OUT/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
         assert row['query']==query and row['signature']==SIG and row['source']==CFG['source']
         for suffix,key in [('trace.jsonl.gz','trace_sha256'),('prefix.npy','prefix_sha256'),('rankings.npy','rankings_sha256')]:assert sha(dest/f'{query:04d}.{suffix}')==row[key]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'])
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS)
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256']);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
     except BaseException:return dict(query=query,error=traceback.format_exc())
+
+def aggregate_inline_readback():
+    """Bind every earlier full read-back to the final complete rankings."""
+    start=time.monotonic();complete=json.loads((OUT/'COMPUTE_COMPLETE.json').read_text())
+    assert sha(OUT/'rankings.npy')==complete['rankings_sha256']
+    ranks=np.load(OUT/'rankings.npy',mmap_mode='r')
+    assert ranks.shape==(QN,GN)
+    assert len(list((OUT/'accepted').glob('*.json')))==QN
+    assert len(list((OUT/'queries').glob('*.trace.jsonl.gz')))==len(CFG['retained_queries'])
+    for query in range(QN):
+        dest=OUT/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
+        accepted=OUT/'accepted'/f'{query:04d}.json'
+        assert sha(accepted)==row['readback_sha256']
+        result=json.loads(accepted.read_text())
+        assert result['query']==query and result['signature']==complete['signature']==row['signature']
+        assert result['trace_sha256']==row['trace_sha256']
+        assert sha(dest/f'{query:04d}.prefix.npy')==row['prefix_sha256']
+        packed=io.BytesIO();np.save(packed,ranks[query])
+        assert hashlib.sha256(packed.getvalue()).hexdigest()==row['rankings_sha256']
+        assert row['trace_retained']==(query in CFG['retained_queries'])
+        trace=dest/f'{query:04d}.trace.jsonl.gz'
+        if row['trace_retained']:assert sha(trace)==row['trace_sha256']
+        else:assert not trace.exists()
+    # Each row is now checked against the combined array; remove only duplicates.
+    for query in range(QN):(OUT/'queries'/f'{query:04d}.rankings.npy').unlink(missing_ok=True)
+    return time.monotonic()-start
 
 def pool_stage(stage):
     start=time.monotonic();fn=compute_query if stage=='compute' else accept_query
@@ -151,8 +208,14 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
-    assert CFG['source'] in ('continuous','boundary_odds','two_step_fitting','stationary_measure') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],WORKERS)==(5,25,5,500,16)
+    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],WORKERS)==(5,25,5,500,16)
     assert (QN,GN) in ((3368,19732),(2228,17661)), 'Expected complete Market1501 or DukeMTMC-reID population'
+    assert CFG.get('relation_model','original') in ('original','csw')
+    if CFG.get('relation_model')=='csw':
+        assert (CFG['rho'],CFG['support_lambda'],CFG['support_mode'])==(.5,.25,'ordinary')
+        assert CFG['support_file'] in CFG['input_sha256']
+    assert CFG.get('trace_retention','all') in ('all','sampled_after_readback')
+    if inline_readback():assert CFG['retained_queries']==np.linspace(0,QN-1,min(32,QN),dtype=int).tolist()
     if stage=='compute':
         assert not OUT.exists(),'New run only; no automatic overwrite or retry'
         initial=resources(reserve=True)
@@ -160,18 +223,26 @@ def main(stage,config_path):
         static_total=initial['memory_current']+shared+WORKERS*(WORKER_AS-shared)+3*2**30
         assert static_total<=.7*initial['memory_max'],('16-worker address-space budget',static_total)
         OUT.mkdir();(OUT/'queries').mkdir()
+        if inline_readback():(OUT/'accepted').mkdir()
         scientific={k:CFG[k] for k in ['source','alpha','beta','step','depth','k','gamma','queries','gallery','feature_sha256','graph_sha256']}
+        if CFG.get('relation_model')=='csw':
+            scientific.update({k:CFG[k] for k in ('relation_model','rho','support_lambda','support_mode')})
+            scientific['support_sha256']=CFG['input_sha256'][CFG['support_file']]
         signature=hashlib.sha256(json.dumps(scientific,sort_keys=True,separators=(',',':')).encode()).hexdigest()
         dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=certified.SOLVER_ID))
         seconds=pool_stage(stage)
         assert len(list((OUT/'queries').glob('*.json')))==QN
         metric=evaluate();sources()
-        dump(OUT/'COMPUTE_COMPLETE.json',dict(status='computed_and_independently_evaluated',signature=signature,query_count=QN,gallery_count=GN,rankings_sha256=sha(OUT/'rankings.npy'),independent=metric,seconds=seconds,git_commit=CFG['commit'],resources=resources()))
+        dump(OUT/'COMPUTE_COMPLETE.json',dict(status='computed_and_independently_evaluated',signature=signature,query_count=QN,gallery_count=GN,rankings_sha256=sha(OUT/'rankings.npy'),independent=metric,seconds=seconds,git_commit=CFG['commit'],resources=resources(),inline_full_score_readback=inline_readback()))
     elif stage=='acceptance':
-        assert (OUT/'compute.exit').read_text().strip()=='0';(OUT/'accepted').mkdir();seconds=pool_stage(stage);sources()
+        assert (OUT/'compute.exit').read_text().strip()=='0'
+        if inline_readback():seconds=aggregate_inline_readback()
+        else:
+            (OUT/'accepted').mkdir();seconds=pool_stage(stage)
+        sources()
         rows=[json.loads(p.read_text()) for p in (OUT/'accepted').glob('*.json')];assert len(rows)==QN
         manifest=json.loads((OUT/'run-manifest.json').read_text())
-        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources()))
+        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
     else:raise ValueError(stage)
 
 if __name__=='__main__':
