@@ -48,18 +48,37 @@ class CombinedTests(unittest.TestCase):
         b,_=combined.rank([0],nq=13,input_similarity=self.x@self.x[0],numerical_tail=False)
         np.testing.assert_array_equal(a,b)
 
-    def fixture(self, directory, source='stationary_measure'):
+    def fixture(self, directory, source='stationary_measure', alpha=5., beta=25., relation='csw'):
         out=Path(directory);(out/'queries').mkdir();(out/'accepted').mkdir()
         mat=out/'input.mat'
         savemat(mat,dict(query_f=self.x[:2],gallery_f=self.x[2:],query_cam=self.cameras[:2],
             gallery_cam=self.cameras[2:],query_label=np.arange(2),gallery_label=np.arange(15)%2))
         certified.install(source)
-        engine=ReliabilityIHyRDP(self.graph,self.aff,self.cameras,eta=.5,support=self.support,lam=.25)
-        reader=ReadbackKernel(self.graph,self.aff,self.cameras,self.support,.5,.25)
-        cfg=dict(source=source,mat=str(mat),depth=13,trace_retention='sampled_after_readback',retained_queries=[0])
+        if relation=='csw':
+            engine=ReliabilityIHyRDP(self.graph,self.aff,self.cameras,eta=.5,support=self.support,lam=.25,alpha=alpha,beta=beta)
+            reader=ReadbackKernel(self.graph,self.aff,self.cameras,self.support,.5,.25)
+            graph,kernel,sums=reader.graph,reader.block,reader.sums
+        else:
+            engine=model.FullIHyRDP(self.graph,self.aff,alpha=alpha,beta=beta)
+            graph,kernel,sums=self.graph,None,self.aff.sum(axis=1)
+        cfg=dict(source=source,alpha=alpha,beta=beta,mat=str(mat),depth=13,trace_retention='sampled_after_readback',retained_queries=[0])
         return patch.multiple(full,create=True,OUT=out,CFG=cfg,QN=2,GN=15,ENGINE=engine,
-            GRAPH=reader.graph,FULL=self.aff,X=self.x,SIG='synthetic',INIT_ERROR=None,
-            READBACK_KERNEL=reader.block,READBACK_SUMS=reader.sums)
+            GRAPH=graph,FULL=self.aff,X=self.x,SIG='synthetic',INIT_ERROR=None,
+            READBACK_KERNEL=kernel,READBACK_SUMS=sums)
+
+    def test_five_parameter_settings_use_actual_parameters_in_complete_readback(self):
+        for relation in ('original','csw'):
+            for alpha,beta in ((5.,25.),(5.,12.5),(5.,50.),(2.5,12.5),(10.,50.)):
+                with self.subTest(relation=relation,alpha=alpha,beta=beta), tempfile.TemporaryDirectory() as directory:
+                    out=Path(directory)
+                    with self.fixture(out,alpha=alpha,beta=beta,relation=relation):
+                        full.CFG['retained_queries']=[0,1]
+                        self.complete_fixture(out)
+                        self.assertEqual(np.load(out/'rankings.npy').shape,(2,15))
+                        if (alpha,beta)!=(5.,25.):
+                            full.CFG.update(alpha=5.,beta=25.)
+                            wrong=full.accept_query(0)
+                            self.assertIn('error',wrong,'Reading a nondefault solve as 5/25 must fail')
 
     def complete_fixture(self, out):
         for q in range(2):

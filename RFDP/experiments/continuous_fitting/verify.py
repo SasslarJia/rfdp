@@ -26,7 +26,7 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.):
     n=graph.shape[0];prefix=list(map(int,prefix));rank=list(map(int,rank))
     assert len(prefix)==depth and prefix[0]==query and len(set(prefix))==depth
     assert all(0<=i<n for i in prefix)
@@ -63,7 +63,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             values=unpack(t['returned_scores']);ev=t['event']
             digest=hashlib.sha256(json.dumps(t['returned_scores'],separators=(',',':')).encode()).hexdigest()
             assert ev['returned_scores_sha256']==digest and ev['size']==len(u) and ev['source']==source
-            c=certify_scores(graph[u][:,u],ew[u],values,source=source)
+            c=certify_scores(graph[u][:,u],ew[u],values,alpha=alpha,beta=beta,source=source)
             selected=u[c['prefix']][:depth-len(labeled)].tolist()
             assert c['prefix']==ev['returned_prefix_local']
             maximum=max(maximum,c['relative']);calls+=1

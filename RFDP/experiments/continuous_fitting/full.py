@@ -146,7 +146,7 @@ def accept_query(query):
         dest=OUT/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
         assert row['query']==query and row['signature']==SIG and row['source']==CFG['source']
         for suffix,key in [('trace.jsonl.gz','trace_sha256'),('prefix.npy','prefix_sha256'),('rankings.npy','rankings_sha256')]:assert sha(dest/f'{query:04d}.{suffix}')==row[key]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS)
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'])
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256']);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
@@ -209,7 +209,9 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
-    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure') and (CFG['alpha'],CFG['beta'],CFG['step'],CFG['depth'],WORKERS)==(5,25,5,500,16)
+    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')
+    assert np.isfinite([CFG['alpha'],CFG['beta']]).all() and min(CFG['alpha'],CFG['beta'])>0
+    assert (CFG['step'],CFG['depth'],WORKERS)==(5,500,16)
     assert (QN,GN) in ((3368,19732),(2228,17661)), 'Expected complete Market1501 or DukeMTMC-reID population'
     assert CFG.get('relation_model','original') in ('original','csw')
     if CFG.get('relation_model')=='csw':
