@@ -12,6 +12,7 @@ from experiments.full_reid.common import load_features,complete_gallery
 from EVAL.ReIDEval import evaluate_reid_rankings
 
 REPO=Path(__file__).resolve().parents[3]
+READBACK_KERNEL=READBACK_SUMS=None
 
 def sha(path):
     h=hashlib.sha256()

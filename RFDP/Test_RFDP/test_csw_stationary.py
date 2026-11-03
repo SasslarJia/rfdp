@@ -1,6 +1,4 @@
 """Actual CSW/SC ranking, bridge read-back, and bounded trace retention."""
-import hashlib
-import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -24,10 +22,10 @@ class CombinedTests(unittest.TestCase):
         self.graph=sparse.csr_matrix(graph);self.cameras=np.arange(n)%3
         self.support,_=build_support(self.aff,self.cameras,k=3,mode='ordinary')
         self.x=rng.normal(size=(n,5));self.x/=np.linalg.norm(self.x,axis=1)[:,None]
-        self.old_solver=model.solve_hyrdp_closed_form
+        self.old_solver=model.solve_hybrid_sparse
 
     def tearDown(self):
-        model.solve_hyrdp_closed_form=self.old_solver
+        model.solve_hybrid_sparse=self.old_solver
 
     def test_weighted_graph_kernel_and_bridge_match_independent_dense_formula(self):
         engine=ReliabilityIHyRDP(self.graph,self.aff,self.cameras,eta=.5,support=self.support,lam=.25)
@@ -90,6 +88,25 @@ class CombinedTests(unittest.TestCase):
                 self.assertIn('error',result)
                 self.assertTrue((out/'queries/0001.trace.jsonl.gz').exists())
                 self.assertFalse((out/'accepted/0001.json').exists())
+
+    def test_retention_modes_leave_all_actual_scores_and_rankings_identical(self):
+        for source in ('original','stationary_measure'):
+            snapshots=[]
+            for mode in ('all','sampled_after_readback'):
+                with tempfile.TemporaryDirectory() as directory:
+                    out=Path(directory)
+                    with self.fixture(out,source):
+                        full.CFG.update(trace_retention=mode,retained_queries=[0,1])
+                        for q in range(2):
+                            result=full.compute_query(q);self.assertNotIn('error',result,result.get('error'))
+                        if mode=='all':
+                            for q in range(2):
+                                result=full.accept_query(q);self.assertNotIn('error',result,result.get('error'))
+                        snapshots.append([dict(prefix=np.load(out/'queries'/f'{q:04d}.prefix.npy').tolist(),
+                            rankings=np.load(out/'queries'/f'{q:04d}.rankings.npy').tolist(),
+                            stages=[{k:row[k] for k in ('labeled','direct','indirect','unlabeled','selected','bridges','returned_scores')}
+                                    for row in full.read_rows(out/'queries'/f'{q:04d}.trace.jsonl.gz')]) for q in range(2)])
+            self.assertEqual(snapshots[0],snapshots[1],source)
 
     def test_wrong_combined_ranking_rejected_before_duplicate_removal(self):
         with tempfile.TemporaryDirectory() as directory:
