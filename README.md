@@ -38,6 +38,10 @@ PYTHONPATH=RFDP python -m experiments.continuous_fitting.launch --config /path/t
 
 运行配置必须绑定干净的执行提交；历史结果使用其原冻结版本。输出目录、特征缓存与原始证据均放在仓库外。
 
+CSW组合使用 `configs/csw-stationary.example.json` 和同一启动入口。`relation_model="csw"` 复用已有相机/共有邻域支持实现；`source="stationary_measure"` 为组合，`source="original"` 为CSW单项。支持矩阵通过 `RFDP/experiments/reliability/prepare_support.py` 从冻结缓存生成，绑定原亲和矩阵与相机顺序。`comparisons` 可列出多个同特征完整基线。
+
+`trace_retention="sampled_after_readback"` 对每个查询的完整轨迹逐分数读回，再只保留配置中预先固定的32个查询轨迹。所有查询均计算和验收，`step`、`depth`、候选构造、完整图库排名及数值阈值不变。保留完整排名、全部逐查询统计、前缀和验收摘要；失败轨迹保留。原有 `trace_retention="all"` 模式仍保存全体轨迹。不同留存方式下实际分数、前沿、桥接、前缀和最终排名的一致性由 `test_csw_stationary.py` 检查。
+
 对比方法采用原论文推荐参数，不针对当前输入额外搜索；超参调优集中于自身方法。各方法共享冻结特征和评价协议，并保留各自规定的输入处理。
 
 ## 外部部署材料
