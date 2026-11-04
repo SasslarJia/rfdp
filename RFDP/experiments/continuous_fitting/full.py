@@ -10,9 +10,11 @@ from . import certified
 from .verify import verify_query,read_rows
 from experiments.full_reid.common import load_features,complete_gallery
 from EVAL.ReIDEval import evaluate_reid_rankings
+from MODEL.Paper_RFDP.PaperFullIterative import ADMISSION_POLICIES,ADMISSION_VERSION
 
 REPO=Path(__file__).resolve().parents[3]
 READBACK_KERNEL=READBACK_SUMS=None
+ADMISSION_CAMERAS=None
 
 def sha(path):
     h=hashlib.sha256()
@@ -33,6 +35,31 @@ def configure(path):
     CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text());OUT=Path(CFG['output'])
     QN,GN=CFG['queries'],CFG['gallery'];WORKERS=CFG['workers']
     BUDGET=CFG['output_budget_bytes'];WORKER_AS=CFG['worker_address_space_limit_bytes']
+
+def admission_binding(cfg):
+    """Validate the optional policy and return its scientific input binding."""
+    policy=cfg.get('admission_policy','original')
+    assert policy in ADMISSION_POLICIES,'Unknown admission policy'
+    if policy=='original':return {}
+    assert cfg['source']=='original' and cfg.get('relation_model','original')=='original'
+    assert (cfg['alpha'],cfg['beta'],cfg['step'])==(5.,25.,5)
+    assert cfg['admission_version']==ADMISSION_VERSION
+    camera_file=cfg['camera_ids_file']
+    assert camera_file in cfg['input_sha256'],'Camera file must be SHA-bound'
+    return dict(admission_policy=policy,admission_version=ADMISSION_VERSION,
+                camera_ids_sha256=cfg['input_sha256'][camera_file])
+
+def load_admission_cameras(cfg,n):
+    binding=admission_binding(cfg)
+    if not binding:return None
+    assert sha(cfg['camera_ids_file'])==binding['camera_ids_sha256'],'Camera file SHA mismatch'
+    cameras=np.load(cfg['camera_ids_file'],allow_pickle=False)
+    assert cameras.shape==(n,) and np.issubdtype(cameras.dtype,np.integer)
+    return cameras
+
+def check_admission_manifest(cfg,manifest):
+    # Also required when final acceptance reuses earlier inline read-backs.
+    assert admission_binding(cfg)==admission_binding(manifest['config']),'Admission binding differs from computed run'
 
 def inline_readback():
     return CFG.get('trace_retention','all')=='sampled_after_readback'
@@ -69,15 +96,17 @@ def guard(stage):
     thread=threading.Thread(target=loop,daemon=True);thread.start();return stop,thread
 
 def initialize_worker(stage,config_path):
-    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS
+    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS,ADMISSION_CAMERAS
     INIT_ERROR=None
     try:
         configure(config_path);resource.setrlimit(resource.RLIMIT_AS,(WORKER_AS,WORKER_AS))
         cache=Path(CFG['cache']);GRAPH=sparse.load_npz(cache/'graph.npz').astype(np.float64).tocsr();GRAPH.eliminate_zeros();GRAPH.sort_indices()
         FULL=np.load(cache/'affinity.npy',mmap_mode='r');X=np.load(cache/'features.npy',mmap_mode='r')
         assert FULL.shape==(QN+GN,QN+GN) and X.shape[0]==QN+GN
-        SIG=json.loads((OUT/'run-manifest.json').read_text())['signature']
+        manifest=json.loads((OUT/'run-manifest.json').read_text())
+        check_admission_manifest(CFG,manifest);SIG=manifest['signature']
         READBACK_KERNEL=READBACK_SUMS=None
+        ADMISSION_CAMERAS=load_admission_cameras(CFG,QN+GN)
         from MODEL.Paper_RFDP import PaperFullIterative as model
         if CFG.get('relation_model','original')=='csw':
             from experiments.stationary_measure.csw_graph import load_inputs,ReadbackKernel
@@ -95,7 +124,8 @@ def initialize_worker(stage,config_path):
             GRAPH=reader.graph
         elif stage=='compute':
             certified.install(CFG['source'])
-            ENGINE=model.FullIHyRDP(GRAPH,FULL,alpha=CFG['alpha'],beta=CFG['beta'],step=5)
+            ENGINE=model.FullIHyRDP(GRAPH,FULL,alpha=CFG['alpha'],beta=CFG['beta'],step=5,
+                admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS)
         if inline_readback() and READBACK_SUMS is None:
             READBACK_SUMS=np.asarray(FULL.sum(axis=1,dtype=np.float64))
     except BaseException:INIT_ERROR=traceback.format_exc()
@@ -103,17 +133,26 @@ def initialize_worker(stage,config_path):
 def compute_query(query):
     try:
         if INIT_ERROR:raise RuntimeError(INIT_ERROR)
+        binding=admission_binding(CFG)
+        if binding:assert ENGINE.admission_policy==binding['admission_policy']
         start=time.monotonic();certified.EVENTS.clear();seen=0
         similarity=X@X[query];dest=OUT/'queries';trace=dest/f'{query:04d}.trace.jsonl.gz'
         with gzip.open(trace,'wt',encoding='utf-8',compresslevel=6) as stream:
             def capture(t):
                 nonlocal seen
                 event=None
+                nominated=t['nominated'] if binding else t['selected']
                 if t['scores'] is not None:
                     assert len(certified.EVENTS)==seen+1;event=certified.EVENTS[seen];seen+=1
-                    assert np.asarray(t['unlabeled'])[event['returned_prefix_local']][:len(t['selected'])].tolist()==t['selected']
-                else:assert len(certified.EVENTS)==seen
+                    expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:CFG['depth']-len(t['labeled'])].tolist()
+                    assert expected==nominated
+                else:
+                    assert len(certified.EVENTS)==seen
+                    assert t['unlabeled'][:CFG['depth']-len(t['labeled'])]==nominated
                 row={k:t[k] for k in ['iteration','labeled','direct','indirect','unlabeled','selected','bridges','residual']}
+                if binding:
+                    assert t['admission_policy']==binding['admission_policy'] and t['admission_version']==binding['admission_version']
+                    row.update({k:t[k] for k in ['nominated','support_camera_counts','admission_policy','admission_version']})
                 row['returned_scores']=None if t['scores'] is None else [certified.packed(v) for v in t['scores']]
                 row['event']=event;stream.write(json.dumps(row,separators=(',',':'),allow_nan=False)+'\n');stream.flush()
             prefix,diag=ENGINE.rank([query],nq=CFG['depth'],input_similarity=similarity,numerical_tail=False,trace=capture)
@@ -125,6 +164,7 @@ def compute_query(query):
         row=dict(query=query,source=CFG['source'],signature=SIG,diagnostics=diag,seconds=time.monotonic()-start,
                  peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,
                  trace_sha256=sha(trace),prefix_sha256=sha(pp),rankings_sha256=sha(rp),pid=os.getpid())
+        row.update(binding)
         dump(dest/f'{query:04d}.json',row)
         if inline_readback():
             before=time.monotonic();accepted=accept_query(query)
@@ -143,13 +183,16 @@ def compute_query(query):
 def accept_query(query):
     try:
         if INIT_ERROR:raise RuntimeError(INIT_ERROR)
+        binding=admission_binding(CFG)
         dest=OUT/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
         assert row['query']==query and row['signature']==SIG and row['source']==CFG['source']
+        assert row.get('admission_policy','original')==CFG.get('admission_policy','original')
+        for key,value in binding.items():assert row[key]==value
         for suffix,key in [('trace.jsonl.gz','trace_sha256'),('prefix.npy','prefix_sha256'),('rankings.npy','rankings_sha256')]:assert sha(dest/f'{query:04d}.{suffix}')==row[key]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'])
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'))
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
-        result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256']);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
+        result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256'],**binding);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
     except BaseException:return dict(query=query,error=traceback.format_exc())
 
 def aggregate_inline_readback():
@@ -209,6 +252,8 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
+    binding=admission_binding(CFG)
+    if stage=='acceptance':check_admission_manifest(CFG,json.loads((OUT/'run-manifest.json').read_text()))
     assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')
     assert np.isfinite([CFG['alpha'],CFG['beta']]).all() and min(CFG['alpha'],CFG['beta'])>0
     assert (CFG['step'],CFG['depth'],WORKERS)==(5,500,16)
@@ -228,6 +273,7 @@ def main(stage,config_path):
         OUT.mkdir();(OUT/'queries').mkdir()
         if inline_readback():(OUT/'accepted').mkdir()
         scientific={k:CFG[k] for k in ['source','alpha','beta','step','depth','k','gamma','queries','gallery','feature_sha256','graph_sha256']}
+        scientific.update(binding)
         if CFG.get('relation_model')=='csw':
             scientific.update({k:CFG[k] for k in ('relation_model','rho','support_lambda','support_mode')})
             scientific['support_sha256']=CFG['input_sha256'][CFG['support_file']]

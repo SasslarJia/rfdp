@@ -9,6 +9,7 @@ import json,gzip,hashlib
 import numpy as np
 from scipy.sparse.csgraph import connected_components
 from .certified import unpack,certify_saved as certify_scores
+from MODEL.Paper_RFDP.PaperFullIterative import ADMISSION_POLICIES,ADMISSION_VERSION
 
 def bridge_edges(graph,full,labels,active,sums,kernel=None):
     inside=np.flatnonzero(np.isin(labels,list(active)));choices=[]
@@ -26,8 +27,14 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None):
     n=graph.shape[0];prefix=list(map(int,prefix));rank=list(map(int,rank))
+    assert admission_policy in ADMISSION_POLICIES
+    if admission_policy!='original':
+        assert source=='original' and kernel is None
+        assert admission_version==ADMISSION_VERSION
+        camera_ids=np.asarray(camera_ids)
+        assert camera_ids.shape==(n,) and np.issubdtype(camera_ids.dtype,np.integer)
     assert len(prefix)==depth and prefix[0]==query and len(set(prefix))==depth
     assert all(0<=i<n for i in prefix)
     nc,labels=connected_components(graph,directed=False);sizes=np.bincount(labels)
@@ -58,15 +65,35 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
         reported=max(reported,residual)
         if len(u)<=5:
             assert t['returned_scores'] is None and t['event'] is None and residual==0
-            selected=u[:depth-len(labeled)].tolist();no_solve+=1
+            nominated=u[:depth-len(labeled)].tolist();no_solve+=1
         else:
             values=unpack(t['returned_scores']);ev=t['event']
             digest=hashlib.sha256(json.dumps(t['returned_scores'],separators=(',',':')).encode()).hexdigest()
             assert ev['returned_scores_sha256']==digest and ev['size']==len(u) and ev['source']==source
             c=certify_scores(graph[u][:,u],ew[u],values,alpha=alpha,beta=beta,source=source)
-            selected=u[c['prefix']][:depth-len(labeled)].tolist()
+            nominated=u[c['prefix']][:depth-len(labeled)].tolist()
             assert c['prefix']==ev['returned_prefix_local']
             maximum=max(maximum,c['relative']);calls+=1
+        selected=nominated
+        if admission_policy!='original':
+            assert t['admission_policy']==admission_policy and t['admission_version']==ADMISSION_VERSION
+            assert t['nominated']==nominated
+            # Independently read candidate rows against the old labeled mask;
+            # do not reuse the producer's incremental bitsets or gate logic.
+            counts=[]
+            for node in nominated:
+                begin,end=graph.indptr[node:node+2]
+                neighbors=graph.indices[begin:end]
+                supporting=neighbors[mask[neighbors] & (graph.data[begin:end]>0)]
+                cameras=set(camera_ids[supporting].tolist())
+                for outside,inside,value in expected_bridges:
+                    if outside==node and value>0:cameras.add(int(camera_ids[inside]))
+                counts.append(len(cameras))
+            assert t['support_camera_counts']==counts
+            admitted=[node for k,node in enumerate(nominated) if k==0 or counts[k]>=2]
+            selected=admitted if admission_policy=='camera_gate' else nominated[:len(admitted)]
+        else:
+            assert t.get('admission_policy','original')=='original'
         assert selected==t['selected']==prefix[len(labeled):len(labeled)+len(selected)]
         mask[selected]=True;labeled.extend(selected)
         for node in selected:

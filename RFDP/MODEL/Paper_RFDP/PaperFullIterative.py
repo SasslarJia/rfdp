@@ -11,6 +11,9 @@ from scipy import sparse
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import MatrixRankWarning, cg, spsolve
 
+ADMISSION_POLICIES = ('original', 'camera_gate', 'camera_gate_prefix')
+ADMISSION_VERSION = 'camera-source-admission-v1'
+
 
 def solve_hybrid_sparse(w_uu, e_u, alpha=5., beta=25., backend='auto', diagnostics=None):
     """Solve Eq. (13); CG changes the solver, never the target equation.
@@ -81,7 +84,8 @@ class FullIHyRDP:
     Explicit numerical-tail policy implements the discussion following Eq.31.
     Programming errors, invalid inputs and timeouts never trigger a tail.
     """
-    def __init__(self, graph, full_similarity, alpha=5., beta=25., step=5):
+    def __init__(self, graph, full_similarity, alpha=5., beta=25., step=5, *,
+                 admission_policy='original', camera_ids=None):
         self.w = sparse.csr_matrix(graph, dtype=np.float64)
         self.w.eliminate_zeros()
         self.n = self.w.shape[0]
@@ -96,6 +100,20 @@ class FullIHyRDP:
             raise ValueError('Invalid parameters')
         self.full = full_similarity
         self.alpha, self.beta, self.step = float(alpha), float(beta), int(step)
+        if admission_policy not in ADMISSION_POLICIES:
+            raise ValueError('Invalid admission policy')
+        self.admission_policy = admission_policy
+        self.camera_bits = None
+        if admission_policy != 'original':
+            cameras = np.asarray(camera_ids)
+            if cameras.shape != (self.n,) or not np.issubdtype(cameras.dtype, np.integer):
+                raise ValueError('Admission requires one integer camera ID per graph node')
+            if step != 5:
+                raise ValueError('Camera admission keeps the original step-five nominations')
+            _, codes = np.unique(cameras, return_inverse=True)
+            # Python integer bitsets avoid a camera-count limit; six/eight bits
+            # suffice for the current datasets. No identity labels are used.
+            self.camera_bits = np.asarray([1 << int(c) for c in codes], dtype=object)
         self.nc, self.components = connected_components(self.w, directed=False)
         self.component_sizes = np.bincount(self.components)
         self.full_sums = np.asarray(full_similarity.sum(axis=1, dtype=np.float64))
@@ -146,6 +164,12 @@ class FullIHyRDP:
         mask = np.zeros(self.n, dtype=bool)
         mask[seeds] = True
         e = np.asarray(self.w[seeds].sum(axis=0)).ravel()
+        support_bits = None
+        if self.camera_bits is not None:
+            support_bits = np.zeros(self.n, dtype=object)
+            for node in seeds:
+                begin, end = self.w.indptr[node:node + 2]
+                support_bits[self.w.indices[begin:end]] |= self.camera_bits[node]
         active = set(self.components[seeds].tolist())
         diagnostics = dict(iterations=0, solver_calls=0, bridge_events=0, bridge_edges=0,
                            max_unlabeled=0, max_relative_residual=0., numerical_tail_count=0,
@@ -198,17 +222,37 @@ class FullIHyRDP:
                 diagnostics['max_relative_residual'] = max(diagnostics['max_relative_residual'], residual)
                 chosen = u[np.lexsort((u, scores))[:self.step]]
             chosen = chosen[:nq - len(labeled)]
+            admission_trace = {}
+            if support_bits is not None:
+                nominated = chosen.copy()
+                # Temporary bridge witnesses belong only to this round. In
+                # particular, they never enter the persistent support bitsets.
+                bits = support_bits[nominated].copy()
+                for outside, inside, _ in edges:
+                    bits[nominated == outside] |= self.camera_bits[inside]
+                counts = np.asarray([int(b).bit_count() for b in bits], dtype=int)
+                keep = counts >= 2
+                keep[0] = True
+                chosen = (nominated[keep] if self.admission_policy == 'camera_gate'
+                          else nominated[:int(keep.sum())])
+                admission_trace = dict(nominated=nominated.tolist(),
+                                       support_camera_counts=counts.tolist(),
+                                       admission_policy=self.admission_policy,
+                                       admission_version=ADMISSION_VERSION)
             if trace is not None:
                 trace(dict(iteration=t, labeled=labeled.copy(), direct=a.tolist(),
                            indirect=np.flatnonzero(b_mask).tolist(), selected=chosen.tolist(),
                            bridges=edges, unlabeled=u.tolist(),
-                           scores=None if scores is None else scores.tolist(), residual=residual))
+                           scores=None if scores is None else scores.tolist(), residual=residual,
+                           **admission_trace))
             mask[chosen] = True
             labeled.extend(chosen.tolist())
             # Only newly labeled rows are accumulated; original graph is immutable.
             for node in chosen:
                 row_start, row_end = self.w.indptr[node:node + 2]
                 e[self.w.indices[row_start:row_end]] += self.w.data[row_start:row_end]
+                if support_bits is not None:
+                    support_bits[self.w.indices[row_start:row_end]] |= self.camera_bits[node]
             active.update(self.components[chosen].tolist())
             diagnostics['iterations'] += 1
             diagnostics['diffusion_nodes'] = len(labeled)

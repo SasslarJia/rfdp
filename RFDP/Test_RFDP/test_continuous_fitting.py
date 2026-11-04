@@ -187,7 +187,7 @@ class CertifiedFittingTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as td:
                 out=Path(td);(out/'queries').mkdir();(out/'accepted').mkdir()
                 runner.OUT=out;runner.QN=1;runner.GN=n-1
-                runner.CFG={'source':source,'depth':16};runner.SIG='synthetic'
+                runner.CFG={'source':source,'depth':16,'alpha':5.,'beta':25.};runner.SIG='synthetic'
                 runner.GRAPH=graph;runner.FULL=full
                 # Exact chosen similarity row without needing an affinity=XX^T fixture.
                 runner.X=np.eye(n);runner.INIT_ERROR=None
