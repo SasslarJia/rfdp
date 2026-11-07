@@ -1,0 +1,32 @@
+{
+  "schema": "fixed-research-order-v1",
+  "auto_start": false,
+  "baseline": "reuse_existing_four_official_results",
+  "phases": [
+    {
+      "name": "converged_f1",
+      "enabled": true,
+      "configurations": [
+        "converged-f1/market-osnet.f1_robust_converged.json",
+        "converged-f1/market-osnet.f1_uniform_converged.json",
+        "converged-f1/market-transreid.f1_robust_converged.json",
+        "converged-f1/market-transreid.f1_uniform_converged.json",
+        "converged-f1/duke-osnet.f1_robust_converged.json",
+        "converged-f1/duke-osnet.f1_uniform_converged.json",
+        "converged-f1/duke-transreid.f1_robust_converged.json",
+        "converged-f1/duke-transreid.f1_uniform_converged.json"
+      ]
+    },
+    {
+      "name": "diagonal_free_reserve",
+      "enabled": false,
+      "requires": "all main results fully accepted and recorded",
+      "configurations": [
+        "diagonal-free/market-osnet.diagonal_free.json",
+        "diagonal-free/market-transreid.diagonal_free.json",
+        "diagonal-free/duke-osnet.diagonal_free.json",
+        "diagonal-free/duke-transreid.diagonal_free.json"
+      ]
+    }
+  ]
+}

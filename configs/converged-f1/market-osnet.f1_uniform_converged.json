@@ -1,0 +1,33 @@
+{
+  "source": "f1_uniform_converged",
+  "path_binding": "required",
+  "runner": "experiments.continuous_fitting.full",
+  "auto_start": false,
+  "run_role": "candidate",
+  "cache_hash_binding": "frozen_index",
+  "expected_cache_input_hashes": {
+    "features.npy": "8b290bcd696e0925dc627382f8f74630ec1cbe0a8186d63e3cc11945013f3aa1",
+    "affinity.npy": "6a1ae9a25cccff26997877431f72055c23445aa0b898a745efffbfe7a6ba43da",
+    "graph.npz": "3464ff8e0b6dc0d821fc7ef92366066d486bcd1588a427eb4787a38a41ca0617"
+  },
+  "alpha": 5,
+  "beta": 25,
+  "step": 5,
+  "depth": 500,
+  "k": 20,
+  "gamma": 0.4,
+  "relation_model": "original",
+  "admission_policy": "original",
+  "queries": 3368,
+  "gallery": 19732,
+  "feature_sha256": "9f603d7149c99e5f4ba44934829d03d3fa1e25f737924c9bb6fa81f37c2d9c31",
+  "graph_sha256": "39057cf989217c8404da364fb0e58121249c107789daecdfc1ab5eed754555f9",
+  "research_schema": "converged-and-reserve-v1",
+  "input_id": "market-osnet",
+  "enabled": true,
+  "retain_initial_state": true,
+  "solver_mode": "nonlinear_converged",
+  "nu": 1.5,
+  "relative_scale": 1.0,
+  "score_tolerance": 1e-08
+}

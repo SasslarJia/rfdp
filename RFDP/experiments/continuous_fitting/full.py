@@ -8,6 +8,7 @@ import numpy as np
 from scipy import sparse
 from . import certified, f1
 from .f1_config import validate_f1_config
+from . import research_config
 from .verify import verify_query,read_rows
 from experiments.full_reid.common import load_features,complete_gallery
 from EVAL.ReIDEval import evaluate_reid_rankings
@@ -36,6 +37,7 @@ def configure(path):
     CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text())
     # Unbound preparation artifacts must stop before data/resource access.
     validate_f1_config(CFG,require_bound=True)
+    research_config.validate(CFG,require_bound=True,require_enabled=True)
     OUT=Path(CFG['output'])
     QN,GN=CFG['queries'],CFG['gallery'];WORKERS=CFG['workers']
     BUDGET=CFG['output_budget_bytes'];WORKER_AS=CFG['worker_address_space_limit_bytes']
@@ -65,14 +67,35 @@ def check_admission_manifest(cfg,manifest):
     # Also required when final acceptance reuses earlier inline read-backs.
     assert admission_binding(cfg)==admission_binding(manifest['config']),'Admission binding differs from computed run'
     assert fitting_binding(cfg)==fitting_binding(manifest['config']),'Fitting binding differs from computed run'
+    if cfg['source'] in research_config.SOURCES:
+        assert manifest['solver_id']==solver_id(cfg['source']),'Saved solver implementation differs'
+        assert manifest['config']['commit']==cfg['commit'],'Saved execution commit differs'
 
 def fitting_binding(cfg):
     binding=validate_f1_config(cfg,require_bound=True)
+    binding.update(research_config.validate(cfg,require_bound=True))
+    if cfg['source'] in research_config.SOURCES:
+        binding['research_solver_id']=modern_solver(cfg['source']).SOLVER_ID
     if cfg['source'] in f1.SOURCES:
         binding.update(f1_solver_id=f1.SOLVER_ID,f1_weight_rule=f1.WEIGHT_RULE)
     return binding
 
+def modern_solver(source):
+    if source in research_config.MAIN:
+        from . import converged
+        return converged
+    if source==research_config.BACKUP:
+        from . import diagonal_free
+        return diagonal_free
+    raise ValueError(source)
+
+def solver_id(source):
+    if source in research_config.SOURCES:return modern_solver(source).SOLVER_ID
+    return f1.SOLVER_ID if source in f1.SOURCES else certified.SOLVER_ID
+
 def install_solver(cfg):
+    if cfg['source'] in research_config.SOURCES:
+        return modern_solver(cfg['source']).install(cfg['source'])
     if cfg['source'] in f1.SOURCES:
         return f1.install(cfg['source'],nu=cfg['f1_nu'])
     return certified.install(cfg['source'])
@@ -151,16 +174,19 @@ def compute_query(query):
         if INIT_ERROR:raise RuntimeError(INIT_ERROR)
         binding=admission_binding(CFG)
         if binding:assert ENGINE.admission_policy==binding['admission_policy']
-        start=time.monotonic();certified.EVENTS.clear();seen=0;linear_systems=0
+        start=time.monotonic();certified.EVENTS.clear();seen=0;linear_systems=0;mm_iterations=0;linear_solve_calls=0;refinement_solve_calls=0;first_state=None
         similarity=X@X[query];dest=OUT/'queries';trace=dest/f'{query:04d}.trace.jsonl.gz'
         with gzip.open(trace,'wt',encoding='utf-8',compresslevel=6) as stream:
             def capture(t):
-                nonlocal seen,linear_systems
+                nonlocal seen,linear_systems,mm_iterations,linear_solve_calls,refinement_solve_calls,first_state
                 event=None
                 nominated=t['nominated'] if binding else t['selected']
                 if t['scores'] is not None:
                     assert len(certified.EVENTS)==seen+1;event=certified.EVENTS[seen];seen+=1
                     linear_systems+=event.get('linear_systems',1)
+                    mm_iterations+=event.get('mm_iterations',0)
+                    linear_solve_calls+=event.get('linear_solve_calls',event.get('cg_calls',0)+event.get('direct_calls',0)+len(event.get('refinements',[])))
+                    refinement_solve_calls+=event.get('refinement_solve_calls',len(event.get('refinements',[])))
                     expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:CFG['depth']-len(t['labeled'])].tolist()
                     assert expected==nominated
                 else:
@@ -171,11 +197,16 @@ def compute_query(query):
                     assert t['admission_policy']==binding['admission_policy'] and t['admission_version']==binding['admission_version']
                     row.update({k:t[k] for k in ['nominated','support_camera_counts','admission_policy','admission_version']})
                 row['returned_scores']=None if t['scores'] is None else [certified.packed(v) for v in t['scores']]
-                row['event']=event;stream.write(json.dumps(row,separators=(',',':'),allow_nan=False)+'\n');stream.flush()
+                row['event']=event
+                if t['iteration']==0:first_state=row
+                stream.write(json.dumps(row,separators=(',',':'),allow_nan=False)+'\n');stream.flush()
             prefix,diag=ENGINE.rank([query],nq=CFG['depth'],input_similarity=similarity,numerical_tail=False,trace=capture)
         assert diag['status']=='complete_diffusion' and diag['numerical_tail_count']==0 and len(prefix)==CFG['depth']
         assert diag['max_relative_residual']<=1e-8
         diag['linear_systems']=linear_systems
+        diag['mm_iterations']=mm_iterations
+        diag['linear_solve_calls']=linear_solve_calls
+        diag['refinement_solve_calls']=refinement_solve_calls
         rank=complete_gallery(prefix,similarity,QN)
         pp=dest/f'{query:04d}.prefix.npy';rp=dest/f'{query:04d}.rankings.npy'
         np.save(pp,prefix.astype(np.int32));np.save(rp,rank)
@@ -183,6 +214,12 @@ def compute_query(query):
                  peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,
                  trace_sha256=sha(trace),prefix_sha256=sha(pp),rankings_sha256=sha(rp),pid=os.getpid())
         row.update(binding)
+        if CFG.get('retain_initial_state'):
+            assert first_state is not None
+            first_path=dest/f'{query:04d}.initial.jsonl.gz'
+            with gzip.open(first_path,'wt',encoding='utf-8') as stream:
+                stream.write(json.dumps(first_state,separators=(',',':'),allow_nan=False)+'\n')
+            row['initial_state_sha256']=sha(first_path)
         dump(dest/f'{query:04d}.json',row)
         if inline_readback():
             before=time.monotonic();accepted=accept_query(query)
@@ -207,11 +244,18 @@ def accept_query(query):
         assert row.get('admission_policy','original')==CFG.get('admission_policy','original')
         for key,value in binding.items():assert row[key]==value
         for suffix,key in [('trace.jsonl.gz','trace_sha256'),('prefix.npy','prefix_sha256'),('rankings.npy','rankings_sha256')]:assert sha(dest/f'{query:04d}.{suffix}')==row[key]
+        if CFG.get('retain_initial_state'):
+            first=dest/f'{query:04d}.initial.jsonl.gz'
+            assert sha(first)==row['initial_state_sha256']
+            assert list(read_rows(first))==[next(read_rows(dest/f'{query:04d}.trace.jsonl.gz'))]
         result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1))
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         if 'linear_systems' in row['diagnostics']:
             assert result['linear_systems']==row['diagnostics']['linear_systems']
+        for counter in ('mm_iterations','linear_solve_calls','refinement_solve_calls'):
+            if counter in row['diagnostics']:assert result[counter]==row['diagnostics'][counter]
+        if CFG.get('retain_initial_state'):result['initial_state_sha256']=row['initial_state_sha256']
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256'],**binding);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
     except BaseException:return dict(query=query,error=traceback.format_exc())
 
@@ -230,6 +274,8 @@ def aggregate_inline_readback():
         result=json.loads(accepted.read_text())
         assert result['query']==query and result['signature']==complete['signature']==row['signature']
         assert result['trace_sha256']==row['trace_sha256']
+        if CFG.get('retain_initial_state'):
+            assert result['initial_state_sha256']==row['initial_state_sha256']==sha(dest/f'{query:04d}.initial.jsonl.gz')
         assert sha(dest/f'{query:04d}.prefix.npy')==row['prefix_sha256']
         packed=io.BytesIO();np.save(packed,ranks[query])
         assert hashlib.sha256(packed.getvalue()).hexdigest()==row['rankings_sha256']
@@ -261,20 +307,24 @@ def evaluate():
     data,nq,ng=load_features(Path(CFG['mat']));assert (nq,ng)==(QN,GN)
     ranks=np.stack([np.load(OUT/'queries'/f'{q:04d}.rankings.npy') for q in range(QN)])
     metric=evaluate_reid_rankings(ranks,range(QN),*[data[k] for k in ['query_label','query_cam','gallery_label','gallery_cam']],QN,max_rank=500,return_per_query=True)
-    qp,qc,gp,gc=[np.asarray(data[k]).ravel() for k in ['query_label','query_cam','gallery_label','gallery_cam']];aps=[];r1=[]
+    qp,qc,gp,gc=[np.asarray(data[k]).ravel() for k in ['query_label','query_cam','gallery_label','gallery_cam']];aps=[];r1=[];inps=[]
     for q,rank in enumerate(ranks):
         order=rank-QN;keep=(gp[order]!=-1)&~((gp[order]==qp[q])&(gc[order]==qc[q]));hits=gp[order[keep]]==qp[q]
         positives=np.count_nonzero((gp==qp[q])&(gc!=qc[q])&(gp!=-1));assert hits.sum()==positives
-        if positives:aps.append(float(np.mean(np.arange(1,positives+1)/(np.flatnonzero(hits)+1))));r1.append(float(hits[0]))
+        if positives:
+            positions=np.flatnonzero(hits)+1
+            aps.append(float(np.mean(np.arange(1,positives+1)/positions)))
+            r1.append(float(hits[0]));inps.append(float(positives/positions[-1]))
     assert abs(np.mean(aps)-metric['mAP'])<1e-12 and np.mean(r1)==metric['rank-1']
+    assert abs(np.mean(inps)-metric['mINP'])<1e-12
     np.save(OUT/'rankings.npy',ranks);dump(OUT/'metrics.json',metric)
-    return dict(mAP=float(np.mean(aps)),rank1=float(np.mean(r1)),valid_queries=len(aps))
+    return dict(mAP=float(np.mean(aps)),rank1=float(np.mean(r1)),mINP=float(np.mean(inps)),valid_queries=len(aps))
 
 def main(stage,config_path):
     configure(config_path);sources()
     binding=admission_binding(CFG);fit_binding=fitting_binding(CFG)
     if stage=='acceptance':check_admission_manifest(CFG,json.loads((OUT/'run-manifest.json').read_text()))
-    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')+f1.SOURCES
+    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')+f1.SOURCES+research_config.SOURCES
     assert np.isfinite([CFG['alpha'],CFG['beta']]).all() and min(CFG['alpha'],CFG['beta'])>0
     assert (CFG['step'],CFG['depth'],WORKERS)==(5,500,16)
     assert (QN,GN) in ((3368,19732),(2228,17661)), 'Expected complete Market1501 or DukeMTMC-reID population'
@@ -299,7 +349,7 @@ def main(stage,config_path):
             scientific.update({k:CFG[k] for k in ('relation_model','rho','support_lambda','support_mode')})
             scientific['support_sha256']=CFG['input_sha256'][CFG['support_file']]
         signature=hashlib.sha256(json.dumps(scientific,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=f1.SOLVER_ID if CFG['source'] in f1.SOURCES else certified.SOLVER_ID))
+        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=solver_id(CFG['source'])))
         seconds=pool_stage(stage)
         assert len(list((OUT/'queries').glob('*.json')))==QN
         metric=evaluate();sources()
@@ -312,7 +362,7 @@ def main(stage,config_path):
         sources()
         rows=[json.loads(p.read_text()) for p in (OUT/'accepted').glob('*.json')];assert len(rows)==QN
         manifest=json.loads((OUT/'run-manifest.json').read_text())
-        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),linear_systems=sum(r.get('linear_systems',r['solver_calls']) for r in rows),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
+        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),linear_systems=sum(r.get('linear_systems',r['solver_calls']) for r in rows),mm_iterations=sum(r.get('mm_iterations',0) for r in rows),linear_solve_calls=sum(r.get('linear_solve_calls',0) for r in rows),refinement_solve_calls=sum(r.get('refinement_solve_calls',0) for r in rows),initial_states_retained=bool(CFG.get('retain_initial_state')),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
     else:raise ValueError(stage)
 
 if __name__=='__main__':

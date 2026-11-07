@@ -28,7 +28,9 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
 def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1):
-    from . import f1
+    from . import f1, research_config
+    if source in research_config.SOURCES:
+        assert admission_policy=='original' and kernel is None
     if source in f1.SOURCES:
         assert f1_updates==1 and admission_policy=='original' and kernel is None
     n=graph.shape[0];prefix=list(map(int,prefix));rank=list(map(int,rank))
@@ -44,7 +46,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
     sums=np.asarray(full.sum(axis=1,dtype=np.float64)) if full_sums is None else full_sums
     labeled=[query];mask=np.zeros(n,dtype=bool);mask[query]=True
     boundary=np.asarray(graph[[query]].sum(axis=0)).ravel();active={int(labels[query])}
-    calls=batches=no_solve=bridges=edges=linear_systems=0;maximum=0.;reported=0.;max_size=0
+    calls=batches=no_solve=bridges=edges=linear_systems=mm_iterations=linear_solve_calls=refinement_solve_calls=0;maximum=0.;reported=0.;max_size=0
     for t in rows:
         check();assert len(labeled)<depth and t['iteration']==batches
         assert t['labeled']==labeled
@@ -73,11 +75,18 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             values=unpack(t['returned_scores']);ev=t['event']
             digest=hashlib.sha256(json.dumps(t['returned_scores'],separators=(',',':')).encode()).hexdigest()
             assert ev['returned_scores_sha256']==digest and ev['size']==len(u) and ev['source']==source
-            if source in f1.SOURCES:
+            if source in research_config.SOURCES:
+                from .full import modern_solver
+                c=modern_solver(source).certify_saved(graph[u][:,u],ew[u],values,ev,alpha=alpha,beta=beta,source=source)
+            elif source in f1.SOURCES:
                 c=f1.certify_saved(graph[u][:,u],ew[u],values,ev,alpha=alpha,beta=beta,source=source,nu=f1_nu)
             else:
                 c=certify_scores(graph[u][:,u],ew[u],values,alpha=alpha,beta=beta,source=source)
             linear_systems+=c.get('linear_systems',1)
+            mm_iterations+=c.get('mm_iterations',0)
+            # Runtime counters are trace records, not reconstructed timings.
+            linear_solve_calls+=ev.get('linear_solve_calls',ev.get('cg_calls',0)+ev.get('direct_calls',0)+len(ev.get('refinements',[])))
+            refinement_solve_calls+=ev.get('refinement_solve_calls',len(ev.get('refinements',[])))
             nominated=u[c['prefix']][:depth-len(labeled)].tolist()
             assert c['prefix']==ev['returned_prefix_local']
             maximum=max(maximum,c['relative']);calls+=1
@@ -111,7 +120,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
     used=set(prefix);expected=[i for i in prefix if i>=qn]
     expected+=sorted((i for i in range(qn,n) if i not in used),key=lambda i:(-float(similarity[i]),i))
     assert rank==expected and sorted(rank)==list(range(qn,n))
-    return dict(solver_calls=calls,linear_systems=linear_systems,iterations=batches,no_solve_batches=no_solve,
+    return dict(solver_calls=calls,linear_systems=linear_systems,mm_iterations=mm_iterations,linear_solve_calls=linear_solve_calls,refinement_solve_calls=refinement_solve_calls,iterations=batches,no_solve_batches=no_solve,
                 bridge_events=bridges,bridge_edges=edges,max_recomputed_residual=maximum,
                 max_reported_residual=reported,max_unlabeled=max_size)
 
