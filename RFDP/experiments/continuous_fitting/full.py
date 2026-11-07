@@ -6,7 +6,8 @@ import argparse,fcntl,gzip,hashlib,io,json,multiprocessing as mp,resource,shutil
 from pathlib import Path
 import numpy as np
 from scipy import sparse
-from . import certified
+from . import certified, f1
+from .f1_config import validate_f1_config
 from .verify import verify_query,read_rows
 from experiments.full_reid.common import load_features,complete_gallery
 from EVAL.ReIDEval import evaluate_reid_rankings
@@ -32,7 +33,10 @@ def dump(path,value):
 
 def configure(path):
     global CFG,OUT,QN,GN,WORKERS,BUDGET,WORKER_AS,CONFIG_PATH
-    CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text());OUT=Path(CFG['output'])
+    CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text())
+    # Unbound preparation artifacts must stop before data/resource access.
+    validate_f1_config(CFG,require_bound=True)
+    OUT=Path(CFG['output'])
     QN,GN=CFG['queries'],CFG['gallery'];WORKERS=CFG['workers']
     BUDGET=CFG['output_budget_bytes'];WORKER_AS=CFG['worker_address_space_limit_bytes']
 
@@ -60,6 +64,18 @@ def load_admission_cameras(cfg,n):
 def check_admission_manifest(cfg,manifest):
     # Also required when final acceptance reuses earlier inline read-backs.
     assert admission_binding(cfg)==admission_binding(manifest['config']),'Admission binding differs from computed run'
+    assert fitting_binding(cfg)==fitting_binding(manifest['config']),'Fitting binding differs from computed run'
+
+def fitting_binding(cfg):
+    binding=validate_f1_config(cfg,require_bound=True)
+    if cfg['source'] in f1.SOURCES:
+        binding.update(f1_solver_id=f1.SOLVER_ID,f1_weight_rule=f1.WEIGHT_RULE)
+    return binding
+
+def install_solver(cfg):
+    if cfg['source'] in f1.SOURCES:
+        return f1.install(cfg['source'],nu=cfg['f1_nu'])
+    return certified.install(cfg['source'])
 
 def inline_readback():
     return CFG.get('trace_retention','all')=='sampled_after_readback'
@@ -115,7 +131,7 @@ def initialize_worker(stage,config_path):
             reader=ReadbackKernel(GRAPH,FULL,cameras,support,CFG['rho'],CFG['support_lambda'])
             READBACK_KERNEL,READBACK_SUMS=reader.block,reader.sums
             if stage=='compute':
-                certified.install(CFG['source'])
+                install_solver(CFG)
                 # load_inputs already checked full-affinity/camera/support bindings.
                 ENGINE=ReliabilityIHyRDP(GRAPH,FULL,cameras,eta=CFG['rho'],support=support,
                     lam=CFG['support_lambda'],alpha=CFG['alpha'],beta=CFG['beta'],step=CFG['step'])
@@ -123,7 +139,7 @@ def initialize_worker(stage,config_path):
                 assert np.array_equal(ENGINE.full_sums,READBACK_SUMS)
             GRAPH=reader.graph
         elif stage=='compute':
-            certified.install(CFG['source'])
+            install_solver(CFG)
             ENGINE=model.FullIHyRDP(GRAPH,FULL,alpha=CFG['alpha'],beta=CFG['beta'],step=5,
                 admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS)
         if inline_readback() and READBACK_SUMS is None:
@@ -135,15 +151,16 @@ def compute_query(query):
         if INIT_ERROR:raise RuntimeError(INIT_ERROR)
         binding=admission_binding(CFG)
         if binding:assert ENGINE.admission_policy==binding['admission_policy']
-        start=time.monotonic();certified.EVENTS.clear();seen=0
+        start=time.monotonic();certified.EVENTS.clear();seen=0;linear_systems=0
         similarity=X@X[query];dest=OUT/'queries';trace=dest/f'{query:04d}.trace.jsonl.gz'
         with gzip.open(trace,'wt',encoding='utf-8',compresslevel=6) as stream:
             def capture(t):
-                nonlocal seen
+                nonlocal seen,linear_systems
                 event=None
                 nominated=t['nominated'] if binding else t['selected']
                 if t['scores'] is not None:
                     assert len(certified.EVENTS)==seen+1;event=certified.EVENTS[seen];seen+=1
+                    linear_systems+=event.get('linear_systems',1)
                     expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:CFG['depth']-len(t['labeled'])].tolist()
                     assert expected==nominated
                 else:
@@ -158,6 +175,7 @@ def compute_query(query):
             prefix,diag=ENGINE.rank([query],nq=CFG['depth'],input_similarity=similarity,numerical_tail=False,trace=capture)
         assert diag['status']=='complete_diffusion' and diag['numerical_tail_count']==0 and len(prefix)==CFG['depth']
         assert diag['max_relative_residual']<=1e-8
+        diag['linear_systems']=linear_systems
         rank=complete_gallery(prefix,similarity,QN)
         pp=dest/f'{query:04d}.prefix.npy';rp=dest/f'{query:04d}.rankings.npy'
         np.save(pp,prefix.astype(np.int32));np.save(rp,rank)
@@ -189,9 +207,11 @@ def accept_query(query):
         assert row.get('admission_policy','original')==CFG.get('admission_policy','original')
         for key,value in binding.items():assert row[key]==value
         for suffix,key in [('trace.jsonl.gz','trace_sha256'),('prefix.npy','prefix_sha256'),('rankings.npy','rankings_sha256')]:assert sha(dest/f'{query:04d}.{suffix}')==row[key]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'))
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1))
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
+        if 'linear_systems' in row['diagnostics']:
+            assert result['linear_systems']==row['diagnostics']['linear_systems']
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256'],**binding);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
     except BaseException:return dict(query=query,error=traceback.format_exc())
 
@@ -252,9 +272,9 @@ def evaluate():
 
 def main(stage,config_path):
     configure(config_path);sources()
-    binding=admission_binding(CFG)
+    binding=admission_binding(CFG);fit_binding=fitting_binding(CFG)
     if stage=='acceptance':check_admission_manifest(CFG,json.loads((OUT/'run-manifest.json').read_text()))
-    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')
+    assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')+f1.SOURCES
     assert np.isfinite([CFG['alpha'],CFG['beta']]).all() and min(CFG['alpha'],CFG['beta'])>0
     assert (CFG['step'],CFG['depth'],WORKERS)==(5,500,16)
     assert (QN,GN) in ((3368,19732),(2228,17661)), 'Expected complete Market1501 or DukeMTMC-reID population'
@@ -274,11 +294,12 @@ def main(stage,config_path):
         if inline_readback():(OUT/'accepted').mkdir()
         scientific={k:CFG[k] for k in ['source','alpha','beta','step','depth','k','gamma','queries','gallery','feature_sha256','graph_sha256']}
         scientific.update(binding)
+        scientific.update(fit_binding)
         if CFG.get('relation_model')=='csw':
             scientific.update({k:CFG[k] for k in ('relation_model','rho','support_lambda','support_mode')})
             scientific['support_sha256']=CFG['input_sha256'][CFG['support_file']]
         signature=hashlib.sha256(json.dumps(scientific,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=certified.SOLVER_ID))
+        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=f1.SOLVER_ID if CFG['source'] in f1.SOURCES else certified.SOLVER_ID))
         seconds=pool_stage(stage)
         assert len(list((OUT/'queries').glob('*.json')))==QN
         metric=evaluate();sources()
@@ -291,7 +312,7 @@ def main(stage,config_path):
         sources()
         rows=[json.loads(p.read_text()) for p in (OUT/'accepted').glob('*.json')];assert len(rows)==QN
         manifest=json.loads((OUT/'run-manifest.json').read_text())
-        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
+        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),linear_systems=sum(r.get('linear_systems',r['solver_calls']) for r in rows),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
     else:raise ValueError(stage)
 
 if __name__=='__main__':

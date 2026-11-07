@@ -1,0 +1,29 @@
+{
+  "f1_config_schema": "f1-scientific-v1",
+  "f1_input_id": "market-transreid",
+  "source": "original",
+  "path_binding": "required",
+  "runner": "experiments.continuous_fitting.full",
+  "auto_start": false,
+  "run_role": "reference_reuse",
+  "cache_hash_binding": "frozen_index",
+  "expected_cache_input_hashes": {
+    "features.npy": "ce153531fa2c1908e3210b5f2b60281ad18064ff41f7f91a23c03360758176fb",
+    "affinity.npy": "d3dd1f9983b20e994dbb64538c432a5b1a113ee86b59fb899ec8f8ab96805bd4",
+    "graph.npz": "82ce6eb3deae872020308395b85b5d9fe779eed5990fe94906a64b3254f2848c"
+  },
+  "alpha": 5,
+  "beta": 25,
+  "step": 5,
+  "depth": 500,
+  "k": 20,
+  "gamma": 0.4,
+  "relation_model": "original",
+  "admission_policy": "original",
+  "f1_nu": 1.5,
+  "f1_updates": 1,
+  "queries": 3368,
+  "gallery": 19732,
+  "feature_sha256": "ed8925dc55a02818304dcd89b40ec3a21ed7d23a5d56c62a9279b826c4a25967",
+  "graph_sha256": "5755f6f586cec6d5883082e81516625ac9f5955dbeeb3534a3a539c229a16335"
+}

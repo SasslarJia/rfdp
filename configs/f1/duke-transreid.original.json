@@ -1,0 +1,29 @@
+{
+  "f1_config_schema": "f1-scientific-v1",
+  "f1_input_id": "duke-transreid",
+  "source": "original",
+  "path_binding": "required",
+  "runner": "experiments.continuous_fitting.full",
+  "auto_start": false,
+  "run_role": "reference_reuse",
+  "cache_hash_binding": "frozen_index",
+  "expected_cache_input_hashes": {
+    "features.npy": "40c6b383ec4e2ecefc4bc65546f564f73d7318b0017e424e6b7015db859ffd8d",
+    "affinity.npy": "6b65f7f7b6d132aa0a29f9853c72902821aab7379ada71e899d93a7d2e3dd6ae",
+    "graph.npz": "3aff78f678e9c58557e8b405be62afed879ea82834bff5660e9bb026976dfbf5"
+  },
+  "alpha": 5,
+  "beta": 25,
+  "step": 5,
+  "depth": 500,
+  "k": 20,
+  "gamma": 0.4,
+  "relation_model": "original",
+  "admission_policy": "original",
+  "f1_nu": 1.5,
+  "f1_updates": 1,
+  "queries": 2228,
+  "gallery": 17661,
+  "feature_sha256": "fdf0edc6e826bd83160244f9926537428624619231cab17f03a83d7a2a39fa54",
+  "graph_sha256": "6f619617852ec278c890f3d8a4b79373be35a67be6792b8c5da89e72c29a8e1a"
+}

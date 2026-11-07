@@ -25,9 +25,9 @@ def run_analysis(command,stream):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',type=Path,required=True);args=parser.parse_args()
-    cfg=json.loads(args.config.read_text());out=Path(cfg['output']);logs=out.with_name(out.name+'-control')
+    cfg=json.loads(args.config.read_text());full.configure(args.config)
+    out=Path(cfg['output']);logs=out.with_name(out.name+'-control')
     full.admission_binding(cfg)
-    full.configure(args.config)
     logs.mkdir(exist_ok=False)
     comparisons=cfg.get('comparisons',[dict(name='original-IHy',queries=cfg['baseline_queries'],summary=cfg['baseline_summary'])])
     assert comparisons and len({r['name'] for r in comparisons})==len(comparisons)
