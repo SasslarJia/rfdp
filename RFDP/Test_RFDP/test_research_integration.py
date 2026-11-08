@@ -46,6 +46,8 @@ class ResearchIntegrationTests(unittest.TestCase):
                     self.assertTrue(first.exists())
                     accepted=json.loads((out/'accepted/0000.json').read_text())
                     self.assertEqual(accepted['initial_state_sha256'],full.sha(first))
+                    for key in full.WORK_COUNTERS:
+                        self.assertEqual(accepted[key],row['diagnostics'][key])
                     self.assertTrue((out/'queries/0000.rankings.npy').exists())
         finally:
             model.solve_hybrid_sparse=old;certified.EVENTS.clear()
@@ -67,7 +69,8 @@ class ResearchIntegrationTests(unittest.TestCase):
         for c in configs:
             manifest={'config':copy.deepcopy(c),'solver_id':full.solver_id(c['source'])}
             full.check_admission_manifest(c,manifest)
-            damaged=copy.deepcopy(manifest);damaged['solver_id']='old'
+            from experiments.continuous_fitting import converged
+            damaged=copy.deepcopy(manifest);damaged['solver_id']=converged.LEGACY_SOLVER_ID
             with self.assertRaises(AssertionError):full.check_admission_manifest(c,damaged)
             damaged=copy.deepcopy(manifest);damaged['config']['commit']='e'*40
             with self.assertRaises(AssertionError):full.check_admission_manifest(c,damaged)

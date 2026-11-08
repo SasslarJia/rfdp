@@ -11,6 +11,8 @@ from scipy.sparse.csgraph import connected_components
 from .certified import unpack,certify_saved as certify_scores
 from MODEL.Paper_RFDP.PaperFullIterative import ADMISSION_POLICIES,ADMISSION_VERSION
 
+WORK_COUNTERS = ('additional_factorizations', 'reference_certifications', 'mp_mm_iterations')
+
 def bridge_edges(graph,full,labels,active,sums,kernel=None):
     inside=np.flatnonzero(np.isin(labels,list(active)));choices=[]
     for comp in range(int(labels.max())+1):
@@ -47,6 +49,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
     labeled=[query];mask=np.zeros(n,dtype=bool);mask[query]=True
     boundary=np.asarray(graph[[query]].sum(axis=0)).ravel();active={int(labels[query])}
     calls=batches=no_solve=bridges=edges=linear_systems=mm_iterations=linear_solve_calls=refinement_solve_calls=0;maximum=0.;reported=0.;max_size=0
+    work_counts=dict.fromkeys(WORK_COUNTERS,0)
     for t in rows:
         check();assert len(labeled)<depth and t['iteration']==batches
         assert t['labeled']==labeled
@@ -87,6 +90,9 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             # Runtime counters are trace records, not reconstructed timings.
             linear_solve_calls+=ev.get('linear_solve_calls',ev.get('cg_calls',0)+ev.get('direct_calls',0)+len(ev.get('refinements',[])))
             refinement_solve_calls+=ev.get('refinement_solve_calls',len(ev.get('refinements',[])))
+            for key in WORK_COUNTERS:
+                value=ev.get(key,0);assert type(value) is int and value>=0
+                work_counts[key]+=value
             nominated=u[c['prefix']][:depth-len(labeled)].tolist()
             assert c['prefix']==ev['returned_prefix_local']
             maximum=max(maximum,c['relative']);calls+=1
@@ -122,7 +128,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
     assert rank==expected and sorted(rank)==list(range(qn,n))
     return dict(solver_calls=calls,linear_systems=linear_systems,mm_iterations=mm_iterations,linear_solve_calls=linear_solve_calls,refinement_solve_calls=refinement_solve_calls,iterations=batches,no_solve_batches=no_solve,
                 bridge_events=bridges,bridge_edges=edges,max_recomputed_residual=maximum,
-                max_reported_residual=reported,max_unlabeled=max_size)
+                max_reported_residual=reported,max_unlabeled=max_size,**work_counts)
 
 def read_rows(path):
     with gzip.open(path,'rt',encoding='utf-8') as f:

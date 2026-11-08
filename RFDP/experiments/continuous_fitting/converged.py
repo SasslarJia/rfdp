@@ -11,14 +11,15 @@ import time
 
 import mpmath as mp
 import numpy as np
-from scipy.sparse.linalg import cg, splu
 
 from . import certified as base
 from . import f1
+from .fitting_workspace import Workspace
 
 original = base.original
 SOURCES = ('f1_robust_converged', 'f1_uniform_converged')
-SOLVER_ID = 'f1-converged-nonlinear-shift-certified-v1'
+LEGACY_SOLVER_ID = 'f1-converged-nonlinear-shift-certified-v1'
+SOLVER_ID = 'f1-converged-lazy-certification-v2'
 WEIGHT_RULE = 'relative-default-charbonnier-converged-nu1p5-v1'
 NU = 1.5
 TOL = base.TOL
@@ -46,37 +47,12 @@ def _positive(values):
     return all(v > 0 and mp.isfinite(v) for v in values)
 
 
-def _weight_points(w, e, values, dps):
-    if dps:
-        return f1.nominal_weights(w, e, values, 'f1_robust', NU, max(40, dps))
-    # This is only a candidate MM update.  It is never the final certificate.
-    with np.errstate(all='ignore'):
-        h = np.asarray(w.sum(axis=1)).ravel()
-        p = e/(h+e)
-        r = p*np.asarray(values, dtype=float)-1.
-        weights = np.where(e > 0, 1./np.sqrt(np.hypot(1., r)), 1.)
-    if not np.isfinite(weights).all() or np.any(weights <= 0):
-        return f1.nominal_weights(w, e, values, 'f1_robust', NU, 40)
-    return [mp.mpf(float(v)) for v in weights]
-
-
-def _screen(w, e, values, alpha, beta):
-    """Sparse, noncertifying stationarity screen; cannot authorize output."""
-    with np.errstate(all='ignore'):
-        x = np.asarray(values, dtype=float)
-        h = np.asarray(w.sum(axis=1)).ravel()
-        root = np.sqrt(h); z = x/root
-        rows = np.repeat(np.arange(len(e)), np.diff(w.indptr))
-        lap = np.bincount(rows, weights=w.data*(z[rows]-z[w.indices]), minlength=len(e))/root
-        r = e/(h+e)*x-1.
-        weight = 1./np.sqrt(np.hypot(1., r))
-        rhs = np.where(e > 0, alpha*weight, beta)
-        gradient = lap+np.where(e > 0, alpha*weight*r, -beta)
-        answer = float(np.max(np.abs(gradient)/rhs))
-    return answer if np.isfinite(answer) else np.inf
-
-
 def _step_change(previous, current, dps):
+    if not dps:
+        x = np.asarray(current, dtype=float)
+        if not np.isfinite(x).all() or np.any(x <= 0):
+            return np.inf
+        return float(np.max(np.abs(x-np.asarray(previous, dtype=float))/x))
     with mp.workdps(max(40, dps)):
         if not _positive(current):
             return mp.inf
@@ -140,7 +116,7 @@ def _phi_inverse(value):
     return value*mp.iv.sqrt((value**2+mp.iv.sqrt(value**4+4))/2)
 
 
-def _reference_certificate(w, e, alpha, beta, values, weights, labels, nc, dps):
+def _reference_certificate(w, e, alpha, beta, values, weights, labels, nc, dps, *, block=None):
     """Enclose the nonlinear root through exact inner-solution shifts.
 
     For the exact frozen-weight solution x, -(Kx)_i/alpha = a_i(p_i*x_i-1)
@@ -152,7 +128,7 @@ def _reference_certificate(w, e, alpha, beta, values, weights, labels, nc, dps):
     try:
         with mp.workdps(dps):
             point, ends = original.point, original.endpoints
-            block = original.Block(w, e, alpha, beta)
+            block = block if block is not None else original.Block(w, e, alpha, beta)
             root, p = _interval_geometry(block)
             a = [point(v) for v in weights]
             inner = _linear_enclosure(block, values, root, p, a)
@@ -190,11 +166,11 @@ def _reference_certificate(w, e, alpha, beta, values, weights, labels, nc, dps):
         mp.iv.dps = old
 
 
-def _uniform_certificate(w, e, alpha, beta, values, reference_cert, dps):
+def _uniform_certificate(w, e, alpha, beta, values, reference_cert, dps, *, block=None):
     old = mp.iv.dps; mp.iv.dps = dps
     try:
         with mp.workdps(dps):
-            block = original.Block(w, e, alpha, beta)
+            block = block if block is not None else original.Block(w, e, alpha, beta)
             root, p = _interval_geometry(block)
             weights = f1._mp_weights(block, reference_cert['intervals'], 'f1_uniform', NU)
             inner = _linear_enclosure(block, values, root, p, weights)
@@ -229,36 +205,53 @@ def _canonicalize(w, e, values, cert, recertify):
     return base.check_order(w, e, values, cert), cert
 
 
-def _candidate(w, e, alpha, beta, weights, stats):
-    matrix, rhs = f1.assemble_weighted(w, e, weights, alpha, beta)
-    candidate = None
-    if len(e) > 128:
-        def count(_):
-            stats['cg_iterations'] += 1
-        stats['cg_calls'] += 1; stats['linear_solve_calls'] += 1
-        candidate, flag = cg(matrix, rhs, rtol=1e-12, atol=0., maxiter=10000, callback=count)
-        if flag != 0 or not np.isfinite(candidate).all():
-            candidate = None
-    if candidate is None:
-        stats['direct_calls'] += 1; stats['linear_solve_calls'] += 1
-        try:
-            candidate = splu(matrix.tocsc()).solve(rhs)
-        except (RuntimeError, ValueError, ArithmeticError):
-            candidate = None
-    if candidate is None or not np.isfinite(candidate).all():
-        return None
-    return [mp.mpf(float(v)) for v in candidate]
-
-
-def _refine(w, e, alpha, beta, weights, values, dps, stats, stage):
+def _refine(system, values, dps, stats, stage):
     stats['linear_solve_calls'] += 1
     stats['refinement_solve_calls'] += 1
     stats['direct_calls'] += 1
     with mp.workdps(dps):
-        values, report = f1.WeightedBlock(w, e, alpha, beta, weights).solve(values, dps)
+        values, report = system.block().solve(values, dps)
     stats['refinements'].append(dict(stage=stage, mm_iteration=stats['mm_iterations'],
                                      dps=dps, **report))
     return values
+
+
+def _nonlinear_pending(cert, shift):
+    # A resolved inner system cannot repair an unfinished nonlinear update.
+    # These diagnostics only defer work; no estimate can accept a solution.
+    if cert is None:
+        return False
+    return ((cert['relative_lower'] > TOL and cert['eta'] < .01*cert['relative_lower'])
+            or (shift > TOL/4 and cert['relative_score_error'] <= 4*shift
+                and cert['eta'] < TOL/64))
+
+
+def _attempt_reference(work, system, values, stats, minimum_dps):
+    last_cert = None
+    for dps in PRECISIONS:
+        if dps < minimum_dps:
+            continue
+        def recertify(v):
+            stats['reference_certifications'] += 1
+            return _reference_certificate(work.w, work.e, work.alpha, work.beta,
+                v, system.weights, work.labels, work.nc, dps, block=work.exact)
+        cert = recertify(values)
+        checked, cert = _canonicalize(work.w, work.e, values, cert, recertify)
+        if checked is not None:
+            return values, cert, checked, dps
+        shift = work.progress(values, system.weights)[1]
+        if _nonlinear_pending(cert, shift):
+            return values, cert, None, dps
+        # Refine only a final candidate whose inner arithmetic/enclosure can
+        # be limiting. A system already factorized by LU reuses that factor.
+        values = _refine(system, values, dps, stats, 'reference')
+        cert = recertify(values)
+        checked, cert = _canonicalize(work.w, work.e, values, cert, recertify)
+        if checked is not None or _nonlinear_pending(
+                cert, work.progress(values, system.weights)[1]):
+            return values, cert, checked, dps
+        last_cert = cert
+    return values, last_cert, None, dps
 
 
 def _certificate_record(values, weights, cert):
@@ -273,19 +266,21 @@ def _certificate_record(values, weights, cert):
                 enclosure='exact-inner-solution-component-sqrt-h-shifts')
 
 
-def _uniform_attempt(w, e, alpha, beta, reference, reference_cert, dps, stats):
+def _uniform_attempt(work, reference, reference_cert, dps, stats):
     stats['uniform_systems'] += 1
-    weights = f1.nominal_weights(w, e, reference, 'f1_uniform', NU, max(40, dps))
-    values = _candidate(w, e, alpha, beta, weights, stats)
-    recertify = lambda v: _uniform_certificate(w, e, alpha, beta, v, reference_cert, dps)
+    weights = f1.nominal_weights(work.w, work.e, reference, 'f1_uniform', NU, max(40, dps))
+    system = work.system(weights, stats)
+    values = system.candidate(reference, 1e-12)
+    recertify = lambda v: _uniform_certificate(work.w, work.e, work.alpha, work.beta,
+        v, reference_cert, dps, block=work.exact)
     if values is not None:
         cert = recertify(values)
-        checked, cert = _canonicalize(w, e, values, cert, recertify)
+        checked, cert = _canonicalize(work.w, work.e, values, cert, recertify)
         if checked is not None:
             return values, weights, cert, checked[0]
-    values = _refine(w, e, alpha, beta, weights, values, dps, stats, 'uniform')
+    values = _refine(system, values, dps, stats, 'uniform')
     cert = recertify(values)
-    checked, cert = _canonicalize(w, e, values, cert, recertify)
+    checked, cert = _canonicalize(work.w, work.e, values, cert, recertify)
     return None if checked is None else (values, weights, cert, checked[0])
 
 
@@ -309,28 +304,29 @@ def solve(w, e, alpha=5., beta=25., source='f1_robust_converged', *,
                  cg_iterations=initial_event['cg_iterations'],
                  direct_calls=initial_direct+len(initial_event['refinements']),
                  linear_solve_calls=initial_cg+initial_direct+len(initial_event['refinements']),
-                 refinement_solve_calls=len(initial_event['refinements']), refinements=[])
-    dps = 0; step = mp.inf; refined = False
+                 refinement_solve_calls=len(initial_event['refinements']), refinements=[],
+                 additional_factorizations=0, reference_certifications=0, mp_mm_iterations=0)
+    work = Workspace(w, e, alpha, beta, labels, nc)
+    system = work.system(weights, stats)
+    working_dps = 0; step = mp.inf; checkpoint = np.inf
+    check_threshold = TOL/32
     while True:
-        # Screening constants affect when certification work is attempted,
-        # never its tolerance or the target.  Stagnation also forces a check.
-        near = dps or _screen(w, e, values, alpha, beta) <= 32*TOL or step <= 32*TOL
-        if near:
-            dps = dps or PRECISIONS[0]
-            recertify = lambda v: _reference_certificate(w, e, alpha, beta, v, weights, labels, nc, dps)
-            cert = recertify(values)
-            checked, cert = _canonicalize(w, e, values, cert, recertify)
-            if checked is None and not refined:
-                values = _refine(w, e, alpha, beta, weights, values, dps, stats, 'reference')
-                refined = True
-                cert = recertify(values)
-                checked, cert = _canonicalize(w, e, values, cert, recertify)
+        residual, shift = work.progress(values, system.weights)
+        merit = max(residual, shift)
+        floor = 32*np.finfo(float).eps if not working_dps else mp.power(10, 4-working_dps)
+        stalled = step <= floor
+        # Full certification is a final-candidate check, not an MM operation.
+        # A failed nonlinear check waits for progress before checking again.
+        if (merit <= check_threshold and merit <= checkpoint/4) or stalled:
+            checkpoint = merit
+            values, cert, checked, dps = _attempt_reference(
+                work, system, values, stats, working_dps or PRECISIONS[0])
             if checked is not None:
                 reference = list(values)
-                reference_record = _certificate_record(reference, weights, cert)
+                reference_record = _certificate_record(reference, system.weights, cert)
                 result = None
                 if source == SOURCES[1]:
-                    result = _uniform_attempt(w, e, alpha, beta, reference, cert, dps, stats)
+                    result = _uniform_attempt(work, reference, cert, dps, stats)
                 if source == SOURCES[0] or result is not None:
                     reference_weights = f1.nominal_weights(w, e, reference, 'f1_robust', NU, max(40, dps))
                     if source == SOURCES[0]:
@@ -358,7 +354,7 @@ def solve(w, e, alpha=5., beta=25., source='f1_robust_converged', *,
                         relative_score_error_upper=_upper_float(final_cert['relative_score_error']),
                         ordered_first_five_certified=True,
                         linear_systems=1+stats['mm_iterations']+stats['uniform_systems'],
-                        max_mm_iterations=max_mm_iterations, candidate_method='sparse-mm-with-certified-refinement',
+                        max_mm_iterations=max_mm_iterations, candidate_method='warm-preconditioned-mm-final-certification',
                         seconds=time.monotonic()-started, **stats)
                     if source == SOURCES[1]:
                         event.update(reference_scores=[base.packed(v) for v in reference],
@@ -367,25 +363,34 @@ def solve(w, e, alpha=5., beta=25., source='f1_robust_converged', *,
                             reference_weights=[float(v) for v in reference_weights],
                             reference_weight_points=[base.packed(v) for v in reference_weights])
                     return np.asarray(output, dtype=object), _upper_float(final_cert['relative']), event
-            # A small MM step at the current arithmetic floor calls for more
-            # precision, not for accepting a plateau as convergence.
-            if cert is None or step <= mp.power(10, 2-dps//2):
-                index = PRECISIONS.index(dps)
-                if index+1 == len(PRECISIONS):
+                # The uniform reference may require tighter *reference*
+                # bounds. Do not repeatedly solve the same uniform system.
+                check_threshold /= 4
+            if stalled:
+                # Only actual arithmetic stagnation opens the MP iteration
+                # path. Merely approaching the solution never raises precision.
+                if working_dps == PRECISIONS[-1]:
                     raise original.ArithmeticFailure('Converged F1 final target/order not certified at precision limit')
-                dps = PRECISIONS[index+1]
+                working_dps = (PRECISIONS[0] if not working_dps else
+                               PRECISIONS[PRECISIONS.index(working_dps)+1])
+                checkpoint = np.inf
         if stats['mm_iterations'] >= max_mm_iterations:
             raise original.ArithmeticFailure('Converged F1 MM safety limit reached without final certificate')
         previous = list(values)
-        weights = _weight_points(w, e, values, dps)
+        weights = work.weights(values, working_dps)
+        system = work.system(weights, stats)
         stats['mm_iterations'] += 1
-        values = _candidate(w, e, alpha, beta, weights, stats)
-        refined = False
-        if dps or values is None or not _positive(values):
-            dps = dps or PRECISIONS[0]
-            values = _refine(w, e, alpha, beta, weights, values, dps, stats, 'reference')
-            refined = True
-        step = _step_change(previous, values, dps)
+        if working_dps:
+            # A float candidate followed by forced MP refinement duplicates
+            # work. Correct the previous point directly using the new system.
+            stats['mp_mm_iterations'] += 1
+            values = _refine(system, previous, working_dps, stats, 'reference')
+        else:
+            rtol = min(1e-6, max(1e-12, .01*residual))
+            values = system.candidate(previous, rtol)
+            if values is None or not _positive(values):
+                values = _refine(system, values, PRECISIONS[0], stats, 'reference')
+        step = _step_change(previous, values, working_dps)
 
 
 def _saved_reference(w, e, alpha, beta, values, record, labels, nc):
@@ -409,7 +414,7 @@ def _saved_reference(w, e, alpha, beta, values, record, labels, nc):
 def certify_saved(w, e, values, event, alpha=5., beta=25., source='f1_robust_converged'):
     """Verify actual saved points, without solving, refining or replacing them."""
     _parameters(source); w, e, labels, nc = original.validate(w, e, alpha, beta)
-    if (len(values) != len(e) or event.get('solver_id') != SOLVER_ID or event.get('source') != source
+    if (len(values) != len(e) or event.get('solver_id') not in (SOLVER_ID, LEGACY_SOLVER_ID) or event.get('source') != source
             or event.get('nu') != NU or event.get('weight_rule') != WEIGHT_RULE
             or event.get('size') != len(e) or event.get('components') != nc
             or event.get('initial_input_sha256') != original.input_sha(w, e, alpha, beta)

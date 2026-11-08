@@ -156,16 +156,24 @@ class Block:
         dh = sparse.diags(1/np.sqrt(h))
         return (sparse.diags(1+self.alpha*self.e/(h+self.e))-dh@self.w@dh).tocsc()
 
+    def factorize(self):
+        """Hook for a caller that already owns this exact rounded system."""
+        return splu(self.rounded_matrix())
+
     def solve(self, initial, dps):
         """Accurate residual correction, with bounded dense MP fallback."""
         target = mp.power(10, -min(60, dps//2))
-        rounded = self.rounded_matrix()
         history = []
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter('error')
-                lu = splu(rounded)
-            x = ([exact_float(v) for v in lu.solve(np.asarray(self.b, dtype=float))]
+            lu = None
+            def factor():
+                nonlocal lu
+                if lu is None:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('error')
+                        lu = self.factorize()
+                return lu
+            x = ([exact_float(v) for v in factor().solve(np.asarray(self.b, dtype=float))]
                  if initial is None else list(initial))
             stale, previous = 0, mp.inf
             for iteration in range(13):
@@ -182,7 +190,7 @@ class Block:
                 scale = max(abs(v) for v in r)
                 if not scale or not mp.isfinite(scale):
                     break
-                delta = lu.solve(np.asarray([float(v/scale) for v in r]))
+                delta = factor().solve(np.asarray([float(v/scale) for v in r]))
                 if not np.isfinite(delta).all():
                     break
                 x = [v+scale*exact_float(c) for v, c in zip(x, delta)]

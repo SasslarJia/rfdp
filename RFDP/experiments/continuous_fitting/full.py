@@ -9,7 +9,7 @@ from scipy import sparse
 from . import certified, f1
 from .f1_config import validate_f1_config
 from . import research_config
-from .verify import verify_query,read_rows
+from .verify import verify_query,read_rows,WORK_COUNTERS
 from experiments.full_reid.common import load_features,complete_gallery
 from EVAL.ReIDEval import evaluate_reid_rankings
 from MODEL.Paper_RFDP.PaperFullIterative import ADMISSION_POLICIES,ADMISSION_VERSION
@@ -175,6 +175,7 @@ def compute_query(query):
         binding=admission_binding(CFG)
         if binding:assert ENGINE.admission_policy==binding['admission_policy']
         start=time.monotonic();certified.EVENTS.clear();seen=0;linear_systems=0;mm_iterations=0;linear_solve_calls=0;refinement_solve_calls=0;first_state=None
+        work_counts=dict.fromkeys(WORK_COUNTERS,0)
         similarity=X@X[query];dest=OUT/'queries';trace=dest/f'{query:04d}.trace.jsonl.gz'
         with gzip.open(trace,'wt',encoding='utf-8',compresslevel=6) as stream:
             def capture(t):
@@ -187,6 +188,7 @@ def compute_query(query):
                     mm_iterations+=event.get('mm_iterations',0)
                     linear_solve_calls+=event.get('linear_solve_calls',event.get('cg_calls',0)+event.get('direct_calls',0)+len(event.get('refinements',[])))
                     refinement_solve_calls+=event.get('refinement_solve_calls',len(event.get('refinements',[])))
+                    for key in WORK_COUNTERS:work_counts[key]+=event.get(key,0)
                     expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:CFG['depth']-len(t['labeled'])].tolist()
                     assert expected==nominated
                 else:
@@ -204,6 +206,7 @@ def compute_query(query):
         assert diag['status']=='complete_diffusion' and diag['numerical_tail_count']==0 and len(prefix)==CFG['depth']
         assert diag['max_relative_residual']<=1e-8
         diag['linear_systems']=linear_systems
+        diag.update(work_counts)
         diag['mm_iterations']=mm_iterations
         diag['linear_solve_calls']=linear_solve_calls
         diag['refinement_solve_calls']=refinement_solve_calls
@@ -253,7 +256,7 @@ def accept_query(query):
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         if 'linear_systems' in row['diagnostics']:
             assert result['linear_systems']==row['diagnostics']['linear_systems']
-        for counter in ('mm_iterations','linear_solve_calls','refinement_solve_calls'):
+        for counter in ('mm_iterations','linear_solve_calls','refinement_solve_calls')+WORK_COUNTERS:
             if counter in row['diagnostics']:assert result[counter]==row['diagnostics'][counter]
         if CFG.get('retain_initial_state'):result['initial_state_sha256']=row['initial_state_sha256']
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256'],**binding);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
@@ -362,7 +365,7 @@ def main(stage,config_path):
         sources()
         rows=[json.loads(p.read_text()) for p in (OUT/'accepted').glob('*.json')];assert len(rows)==QN
         manifest=json.loads((OUT/'run-manifest.json').read_text())
-        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),linear_systems=sum(r.get('linear_systems',r['solver_calls']) for r in rows),mm_iterations=sum(r.get('mm_iterations',0) for r in rows),linear_solve_calls=sum(r.get('linear_solve_calls',0) for r in rows),refinement_solve_calls=sum(r.get('refinement_solve_calls',0) for r in rows),initial_states_retained=bool(CFG.get('retain_initial_state')),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback()))
+        dump(OUT/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=manifest['signature'],time=now(),queries=QN,solver_calls=sum(r['solver_calls'] for r in rows),linear_systems=sum(r.get('linear_systems',r['solver_calls']) for r in rows),mm_iterations=sum(r.get('mm_iterations',0) for r in rows),linear_solve_calls=sum(r.get('linear_solve_calls',0) for r in rows),refinement_solve_calls=sum(r.get('refinement_solve_calls',0) for r in rows),initial_states_retained=bool(CFG.get('retain_initial_state')),max_recomputed_residual=max(r['max_recomputed_residual'] for r in rows),rankings_sha256=sha(OUT/'rankings.npy'),actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,certificate_implementation_shared=True,seconds=seconds,git_commit=CFG['commit'],resources=resources(),trace_retention=CFG.get('trace_retention','all'),retained_queries=CFG.get('retained_queries'),all_stage_traces_retained=not inline_readback(),readback_performed_inline=inline_readback(),**{key:sum(r.get(key,0) for r in rows) for key in WORK_COUNTERS}))
     else:raise ValueError(stage)
 
 if __name__=='__main__':

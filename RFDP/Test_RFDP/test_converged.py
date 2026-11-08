@@ -133,6 +133,53 @@ class ConvergedFittingTests(unittest.TestCase):
         self.assertGreater(float(independent_residual(first, source=ROBUST,
                                                      target=self.target)), 1e-3)
 
+    def test_intermediate_updates_do_not_trigger_per_step_mp_certification(self):
+        # Regression for the cost bug: a regular well-resolved graph should
+        # not enter a persistent MP loop merely because MM is converging.
+        for source in (ROBUST, UNIFORM):
+            event = self.solutions[source][2]
+            self.assertGreater(event['mm_iterations'], 10)
+            self.assertLess(event['reference_certifications'], event['mm_iterations']/4)
+            self.assertEqual(event['mp_mm_iterations'], 0)
+            self.assertLess(event['refinement_solve_calls'], event['mm_iterations']/4)
+
+    def test_previous_certificate_format_remains_readable(self):
+        for source in (ROBUST, UNIFORM):
+            values, _, event = self.solutions[source]
+            old = copy.deepcopy(event)
+            old['solver_id'] = self.method.LEGACY_SOLVER_ID
+            for key in ('additional_factorizations', 'reference_certifications', 'mp_mm_iterations'):
+                old.pop(key)
+            checked = self.method.certify_saved(self.w, self.e, values, old, source=source)
+            self.assertEqual(checked['prefix'], event['returned_prefix_local'])
+
+    def test_float_stagnation_uses_mp_recovery_without_relaxing_acceptance(self):
+        from experiments.continuous_fitting.fitting_workspace import LinearSystem
+        # Emulate a float inner solve that cannot improve its starting point.
+        # The MP path must solve the same target, not accept the stalled point.
+        with patch.object(LinearSystem, 'candidate',
+                          side_effect=lambda previous, rtol: np.asarray(previous, dtype=float)):
+            values, residual, event = self.method.solve(self.w, self.e, source=ROBUST)
+        self.assertGreater(event['mp_mm_iterations'],0)
+        self.assertLessEqual(residual,1e-8)
+        self.assertLessEqual(float(independent_residual(values,source=ROBUST,target=self.target)),1e-8)
+        self.method.certify_saved(self.w,self.e,values,event,source=ROBUST)
+
+    def test_weak_anchor_with_large_self_loops_matches_analytic_target(self):
+        # A fixed numerical-conditioning case, not a retrieval/parameter trial.
+        w = sparse.csr_matrix([[1e8, .25], [.25, 1e8]])
+        e = np.array([.5, 0.])
+        values, residual, event = self.method.solve(w, e, source=ROBUST)
+        with mp.workdps(100):
+            h = mp.mpf(10)**8 + mp.mpf(1)/4
+            p = mp.mpf('.5')/(h+mp.mpf('.5'))
+            r = 5*mp.sqrt((25+mp.sqrt(629))/2)
+            target = [(1+r)/p, (1+r)/p+100*h]
+            self.assertLessEqual(max(abs(exact_number(x)-y)/y for x,y in zip(values,target)),
+                                 mp.mpf('1e-8'))
+        self.assertLessEqual(residual, 1e-8)
+        self.method.certify_saved(w, e, values, event, source=ROBUST)
+
     def test_uniform_uses_the_converged_reference_including_zero_residual_anchors(self):
         robust, uniform = [np.asarray(self.solutions[s][0], dtype=float)
                            for s in (ROBUST, UNIFORM)]
