@@ -90,7 +90,29 @@ class LinearSystem:
             self.stats['additional_factorizations'] += 1
         return self.factor
 
+    def residual(self, values):
+        """Float residual in the actual weighted equation, without large
+        self-loop subtraction. Used for inner-solve control, never acceptance.
+        """
+        work=self.workspace
+        x=np.asarray(values,dtype=float);z=x/work.root
+        lap=np.bincount(work.rows,weights=work.off.data*(
+            z[work.rows]-z[work.off.indices]),minlength=len(x))/work.root
+        return self.rhs-lap-work.alpha*work.p*np.asarray(self.weights,dtype=float)*x
+
+    def relative_residual(self, values):
+        if values is None or not np.isfinite(values).all():
+            return np.inf
+        return float(np.max(np.abs(self.residual(values))/self.rhs))
+
     def candidate(self, previous, rtol):
+        """rtol controls max_i |b-Mx|/b_i, NOT the global RHS norm.
+
+        ||r||_2 <= rtol*min(b) implies this componentwise bound in exact
+        arithmetic. Recompute it after CG, since recurrence residuals and
+        rounded matrices are not authoritative. Final F1 certification is
+        still separate and unchanged.
+        """
         candidate = None
         if len(self.rhs) > 128:
             def count(_):
@@ -101,17 +123,27 @@ class LinearSystem:
             preconditioner = sparse.diags(1/diagonal)
             candidate, flag = cg(self.matrix, self.rhs,
                 x0=None if previous is None else np.asarray(previous, dtype=float),
-                M=preconditioner, rtol=rtol, atol=0., maxiter=10000, callback=count)
-            if flag != 0 or not np.isfinite(candidate).all():
-                candidate = None
-        if candidate is None:
-            self.stats['direct_calls'] += 1
-            self.stats['linear_solve_calls'] += 1
-            try:
-                candidate = self.factorize().solve(self.rhs)
-            except (RuntimeError, ValueError, ArithmeticError):
-                return None
-        return candidate if np.isfinite(candidate).all() else None
+                M=preconditioner, rtol=0., atol=rtol*float(np.min(self.rhs)),
+                maxiter=10000, callback=count)
+            if self.relative_residual(candidate) <= rtol:
+                return candidate
+        # A failed componentwise check is an inner solve issue. Repair it
+        # in float64 first; do not report an unchanged warm start as an
+        # outer-iteration arithmetic floor.
+        try:
+            factor=self.factorize()
+            for _ in range(3):
+                self.stats['direct_calls'] += 1
+                self.stats['linear_solve_calls'] += 1
+                if candidate is None or not np.isfinite(candidate).all():
+                    candidate=factor.solve(self.rhs)
+                else:
+                    candidate=candidate+factor.solve(self.residual(candidate))
+                if self.relative_residual(candidate) <= rtol:
+                    return candidate
+        except (RuntimeError, ValueError, ArithmeticError):
+            pass
+        return None
 
     def block(self):
         return _CachedWeightedBlock(self)

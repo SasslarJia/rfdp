@@ -19,7 +19,8 @@ from .fitting_workspace import Workspace
 original = base.original
 SOURCES = ('f1_robust_converged', 'f1_uniform_converged')
 LEGACY_SOLVER_ID = 'f1-converged-nonlinear-shift-certified-v1'
-SOLVER_ID = 'f1-converged-lazy-certification-v2'
+PREVIOUS_SOLVER_ID = 'f1-converged-lazy-certification-v2'
+SOLVER_ID = 'f1-converged-componentwise-inner-v3'
 WEIGHT_RULE = 'relative-default-charbonnier-converged-nu1p5-v1'
 NU = 1.5
 TOL = base.TOL
@@ -319,8 +320,14 @@ def solve(w, e, alpha=5., beta=25., source='f1_robust_converged', *,
         # A failed nonlinear check waits for progress before checking again.
         if (merit <= check_threshold and merit <= checkpoint/4) or stalled:
             checkpoint = merit
+            before_check = list(values)
             values, cert, checked, dps = _attempt_reference(
                 work, system, values, stats, working_dps or PRECISIONS[0])
+            # A successful corrective solve invalidates the pre-check stall.
+            # In particular, a coarse warm-start CG stop is not evidence that
+            # every subsequent nonlinear update needs MP arithmetic.
+            corrected_step = _step_change(before_check, values, max(40, working_dps))
+            stalled = stalled and corrected_step <= floor
             if checked is not None:
                 reference = list(values)
                 reference_record = _certificate_record(reference, system.weights, cert)
@@ -414,7 +421,7 @@ def _saved_reference(w, e, alpha, beta, values, record, labels, nc):
 def certify_saved(w, e, values, event, alpha=5., beta=25., source='f1_robust_converged'):
     """Verify actual saved points, without solving, refining or replacing them."""
     _parameters(source); w, e, labels, nc = original.validate(w, e, alpha, beta)
-    if (len(values) != len(e) or event.get('solver_id') not in (SOLVER_ID, LEGACY_SOLVER_ID) or event.get('source') != source
+    if (len(values) != len(e) or event.get('solver_id') not in (SOLVER_ID, PREVIOUS_SOLVER_ID, LEGACY_SOLVER_ID) or event.get('source') != source
             or event.get('nu') != NU or event.get('weight_rule') != WEIGHT_RULE
             or event.get('size') != len(e) or event.get('components') != nc
             or event.get('initial_input_sha256') != original.input_sha(w, e, alpha, beta)

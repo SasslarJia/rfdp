@@ -64,6 +64,31 @@ class FittingWorkspaceTests(unittest.TestCase):
         np.testing.assert_allclose(x,expected,rtol=1e-10,atol=1e-12)
         self.assertEqual(counters['cg_calls'],1)
 
+    def test_small_rhs_node_cannot_hide_behind_global_cg_tolerance(self):
+        work=self.work(sparse.eye(130,format='csr'),np.ones(130))
+        weights=np.ones(130);weights[0]=1e-12
+        system=work.system(weights,stats())
+        previous=np.full(130,2.);previous[0]=0.
+        # The old global test accepts a 100% error on the small RHS node.
+        residual=system.residual(previous)
+        self.assertLess(np.linalg.norm(residual),1e-6*np.linalg.norm(system.rhs))
+        self.assertEqual(system.relative_residual(previous),1.)
+        x=system.candidate(previous,1e-6)
+        self.assertIsNotNone(x)
+        self.assertLessEqual(system.relative_residual(x),1e-6)
+        np.testing.assert_allclose(x,np.full(130,2.),rtol=1e-6)
+
+    def test_cg_success_flag_does_not_override_componentwise_check(self):
+        work=self.work(sparse.eye(130,format='csr'),np.ones(130))
+        weights=np.ones(130);weights[0]=1e-12
+        counters=stats();system=work.system(weights,counters)
+        previous=np.full(130,2.);previous[0]=0.
+        with patch.object(ws,'cg',return_value=(previous.copy(),0)):
+            x=system.candidate(previous,1e-6)
+        self.assertLessEqual(system.relative_residual(x),1e-6)
+        self.assertEqual(counters['additional_factorizations'],1)
+        np.testing.assert_allclose(x,np.full(130,2.),rtol=1e-6)
+
 
 if __name__=='__main__':
     unittest.main()

@@ -146,20 +146,37 @@ class ConvergedFittingTests(unittest.TestCase):
     def test_previous_certificate_format_remains_readable(self):
         for source in (ROBUST, UNIFORM):
             values, _, event = self.solutions[source]
-            old = copy.deepcopy(event)
-            old['solver_id'] = self.method.LEGACY_SOLVER_ID
-            for key in ('additional_factorizations', 'reference_certifications', 'mp_mm_iterations'):
-                old.pop(key)
-            checked = self.method.certify_saved(self.w, self.e, values, old, source=source)
-            self.assertEqual(checked['prefix'], event['returned_prefix_local'])
+            for solver_id in (self.method.LEGACY_SOLVER_ID,self.method.PREVIOUS_SOLVER_ID):
+                old = copy.deepcopy(event)
+                old['solver_id'] = solver_id
+                for key in ('additional_factorizations', 'reference_certifications', 'mp_mm_iterations'):
+                    old.pop(key)
+                checked = self.method.certify_saved(self.w, self.e, values, old, source=source)
+                self.assertEqual(checked['prefix'], event['returned_prefix_local'])
 
-    def test_float_stagnation_uses_mp_recovery_without_relaxing_acceptance(self):
+    def test_successful_correction_clears_preceding_stagnation_flag(self):
         from experiments.continuous_fitting.fitting_workspace import LinearSystem
-        # Emulate a float inner solve that cannot improve its starting point.
-        # The MP path must solve the same target, not accept the stalled point.
+        # A corrective solve makes progress after the candidate stayed put.
+        # The old flag must not latch all subsequent MM updates into MP.
         with patch.object(LinearSystem, 'candidate',
                           side_effect=lambda previous, rtol: np.asarray(previous, dtype=float)):
             values, residual, event = self.method.solve(self.w, self.e, source=ROBUST)
+        self.assertEqual(event['mp_mm_iterations'],0)
+        self.assertLessEqual(residual,1e-8)
+        self.assertLessEqual(float(independent_residual(values,source=ROBUST,target=self.target)),1e-8)
+        self.method.certify_saved(self.w,self.e,values,event,source=ROBUST)
+
+    def test_unrepaired_stagnation_retains_mp_recovery(self):
+        from experiments.continuous_fitting.fitting_workspace import LinearSystem
+        actual=self.method._attempt_reference
+        calls=[]
+        def first_check_cannot_correct(work,system,values,counters,minimum_dps):
+            calls.append(1)
+            if len(calls)==1:return values,None,None,minimum_dps
+            return actual(work,system,values,counters,minimum_dps)
+        with patch.object(LinearSystem,'candidate',side_effect=lambda previous,rtol: np.asarray(previous,dtype=float)), \
+             patch.object(self.method,'_attempt_reference',side_effect=first_check_cannot_correct):
+            values,residual,event=self.method.solve(self.w,self.e,source=ROBUST)
         self.assertGreater(event['mp_mm_iterations'],0)
         self.assertLessEqual(residual,1e-8)
         self.assertLessEqual(float(independent_residual(values,source=ROBUST,target=self.target)),1e-8)
