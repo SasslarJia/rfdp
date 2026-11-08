@@ -214,7 +214,7 @@ def compute_query(query):
         pp=dest/f'{query:04d}.prefix.npy';rp=dest/f'{query:04d}.rankings.npy'
         np.save(pp,prefix.astype(np.int32));np.save(rp,rank)
         row=dict(query=query,source=CFG['source'],signature=SIG,diagnostics=diag,seconds=time.monotonic()-start,
-                 peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024,
+                 peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if sys.platform=='darwin' else 1024),
                  trace_sha256=sha(trace),prefix_sha256=sha(pp),rankings_sha256=sha(rp),pid=os.getpid())
         row.update(binding)
         if CFG.get('retain_initial_state'):
