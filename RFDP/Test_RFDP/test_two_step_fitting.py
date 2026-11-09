@@ -12,6 +12,31 @@ class TwoStepFittingTests(unittest.TestCase):
         self.w=np.array([[1.,2.,.5,0.],[2.,1.,0.,.7],[.5,0.,1.,.3],[0.,.7,.3,1.]])
         self.e=np.array([1.,.2,0.,0.]);self.h=self.w.sum(1)
 
+    def test_documented_relay_branch_and_direct_competitor(self):
+        # Six-node frontier actually takes the step-five scoring branch.
+        # Exact analytical scores, not empirical retrieval measurements.
+        w=np.eye(6);w[0,1]=w[1,0]=1.
+        e=np.array([2/9,0.,1/39,.001,.0005,.00025])
+        old=assemble_system(w,e,source='original')
+        new=assemble_system(w,e,source='two_step_fitting')
+        x0=np.linalg.solve(old.matrix.toarray(),old.rhs)
+        values,_,event=solve(sparse.csr_matrix(w),e,source='two_step_fitting')
+        x1=np.asarray(values,dtype=float)
+        np.testing.assert_allclose(x0[:3],[60.,110.,40.],rtol=1e-12)
+        np.testing.assert_allclose(x1[:3],[145/7,220/7,40.],rtol=1e-12)
+        np.testing.assert_allclose((new.matrix-old.matrix).diagonal(),[0.,.625,0.,0.,0.,0.])
+        self.assertEqual(event['returned_prefix_local'][:3],[0,1,2])
+        self.assertEqual(certify_saved(sparse.csr_matrix(w),e,values,
+                         source='two_step_fitting')['prefix'],event['returned_prefix_local'])
+
+    def test_timing_entry_selects_only_requested_candidate(self):
+        from experiments.continuous_fitting.local_timing import timing_sources
+        self.assertEqual(timing_sources({'candidate_source':'two_step_fitting'}),
+                         ('original','two_step_fitting'))
+        self.assertEqual(timing_sources({}),('original','f1_robust_converged'))
+        with self.assertRaises(ValueError):
+            timing_sources({'candidate_source':'unknown'})
+
     def test_renewal_mean_via_independent_phase_chain(self):
         p=self.e/(self.h+self.e);q=self.w@p/(self.h+self.e)
         for i in [2,3]:

@@ -23,6 +23,16 @@ from scipy import sparse
 from . import full, certified, converged
 from MODEL.Paper_RFDP import PaperFullIterative as model
 
+TIMING_CANDIDATES = ('two_step_fitting', 'f1_robust_converged')
+
+
+def timing_sources(cfg):
+    # Preserve old F1 timing recipes; new recipes must name their candidate.
+    candidate = cfg.get('candidate_source', 'f1_robust_converged')
+    if candidate not in TIMING_CANDIDATES:
+        raise ValueError('Unsupported paired timing candidate: ' + str(candidate))
+    return ('original', candidate)
+
 
 class ProgressEngine:
     def __init__(self, engine, source, query):
@@ -40,12 +50,15 @@ class ProgressEngine:
 
 def run(config_path):
     cfg=json.loads(Path(config_path).read_text())
+    sources=timing_sources(cfg)
     output=Path(cfg['output']);output.mkdir(parents=True,exist_ok=False)
     cache=Path(cfg['cache']);qn,gn=cfg['query_count'],cfg['gallery_count']
     queries=cfg['query_ids']
     if not queries or len(set(queries))!=len(queries) or any(type(q) is not int or not 0<=q<qn for q in queries):
         raise ValueError('Explicit unique query IDs required')
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=full.REPO,text=True).strip()
+    if cfg.get('expected_commit') and cfg['expected_commit'] != head:
+        raise ValueError('Timing checkout differs from expected_commit')
     for name,expected in cfg['cache_sha256'].items():
         if name not in ('graph.npz','features.npy','affinity.npy') or full.sha(cache/name)!=expected:
             raise ValueError('Frozen input SHA mismatch: '+name)
@@ -62,12 +75,16 @@ def run(config_path):
     full.INIT_ERROR=None;full.READBACK_KERNEL=None;full.ADMISSION_CAMERAS=None
     full.READBACK_SUMS=np.asarray(affinity.sum(axis=1,dtype=np.float64))
     report=dict(scope='paired-query CPU timing; no population metrics',config=cfg,
+        paired_sources=list(sources),
         commit=head,platform=platform.platform(),machine=platform.machine(),python=sys.version,
         numpy=np.__version__,workers=1,blas_threads=1,thread_environment={k:os.environ[k] for k in
         ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS','VECLIB_MAXIMUM_THREADS')},
         loading_seconds=time.perf_counter()-load_start,runs=[])
     report['source_sha256']={name:full.sha(full.REPO/name) for name in (
         'RFDP/experiments/continuous_fitting/local_timing.py',
+        'RFDP/experiments/continuous_fitting/model.py',
+        'RFDP/experiments/continuous_fitting/certified.py',
+        'RFDP/MODEL/Paper_RFDP/PaperFullIterative.py',
         'RFDP/experiments/continuous_fitting/full.py',
         'RFDP/experiments/continuous_fitting/verify.py',
         'RFDP/experiments/continuous_fitting/converged.py',
@@ -76,13 +93,15 @@ def run(config_path):
         ['git','status','--porcelain'],cwd=full.REPO,text=True)
     full.dump(output/'timing.json',report)
     for query in queries:
-        for source in ('original','f1_robust_converged'):
+        for source in sources:
             dest=output/f'{query:04d}'/source
             (dest/'queries').mkdir(parents=True);(dest/'accepted').mkdir()
             run_cfg=dict(source=source,alpha=5.,beta=25.,step=5,depth=500,
                 relation_model='original',admission_policy='original',retain_initial_state=True,
-                trace_retention='sampled_after_readback',retained_queries=[query],nu=1.5,
+                trace_retention='sampled_after_readback',retained_queries=[query],
                 commit=head,queries=qn,gallery=gn)
+            if source == 'f1_robust_converged':
+                run_cfg['nu']=1.5
             full.CFG,full.OUT=run_cfg,dest
             full.SIG=hashlib.sha256(json.dumps(dict(config=run_cfg,inputs=cfg['cache_sha256']),
                                                 sort_keys=True).encode()).hexdigest()
@@ -116,7 +135,7 @@ def run(config_path):
                     item['archived_baseline_prefix_identical']=bool(np.array_equal(saved,actual))
                     assert item['archived_baseline_prefix_identical'],'Baseline dynamic prefix differs'
                 report['runs'].append(item)
-                if source=='f1_robust_converged':
+                if source==sources[1]:
                     base=report['runs'][-2]
                     item['paired_compute_ratio']=item['compute_seconds']/base['compute_seconds']
                     item['paired_compute_and_readback_ratio']=wall/base['wall_seconds']
