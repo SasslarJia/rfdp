@@ -10,6 +10,7 @@ import numpy as np
 from scipy import sparse
 
 from experiments.continuous_fitting import certified, full
+from experiments.continuous_fitting.verify import verify_query
 from experiments.relation_routes.smoothing import System
 
 
@@ -26,6 +27,21 @@ class FullFrontierTests(unittest.TestCase):
         self.assertLessEqual(residual,1e-8)
         saved=certified.certify_saved(w,e,values,source='original')
         self.assertEqual(saved['prefix'],event['returned_prefix_local'])
+        # A query connected to all singleton frontier nodes gives this exact
+        # stage in a real sparse graph. Verify reconstruction and the complete
+        # gallery, not just the standalone equation certificate.
+        ids=np.arange(1,n+1);zeros=np.zeros(n,dtype=int)
+        graph=sparse.eye(n+1,format='csr')+sparse.csr_matrix(
+            (np.r_[e,e],(np.r_[zeros,ids],np.r_[ids,zeros])),shape=(n+1,n+1))
+        chosen=[i+1 for i in event['returned_prefix_local']];prefix=[0]+chosen
+        rank=chosen+[i for i in range(1,n+1) if i not in chosen]
+        trace=dict(iteration=0,labeled=[0],direct=ids.tolist(),indirect=[],
+            unlabeled=ids.tolist(),selected=chosen,bridges=[],residual=residual,
+            returned_scores=[certified.packed(v) for v in values],event=event)
+        checked=verify_query(graph,None,np.zeros(n+1),0,prefix,rank,[trace],
+            'original',1,6,full_sums=np.ones(n+1))
+        self.assertEqual(checked['max_unlabeled'],n)
+        self.assertLessEqual(checked['max_recomputed_residual'],1e-8)
 
     def test_internal_smoothing_preserves_large_frontier(self):
         n=8193;w=sparse.eye(n,format='csr');e=np.linspace(.25,1.,n)
