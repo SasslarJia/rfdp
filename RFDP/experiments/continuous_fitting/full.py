@@ -17,6 +17,7 @@ from MODEL.Paper_RFDP.PaperFullIterative import ADMISSION_POLICIES,ADMISSION_VER
 REPO=Path(__file__).resolve().parents[3]
 READBACK_KERNEL=READBACK_SUMS=None
 ADMISSION_CAMERAS=None
+STAGE_CERTIFIER=None
 
 def sha(path):
     h=hashlib.sha256()
@@ -38,6 +39,9 @@ def configure(path):
     # Unbound preparation artifacts must stop before data/resource access.
     validate_f1_config(CFG,require_bound=True)
     research_config.validate(CFG,require_bound=True,require_enabled=True)
+    if 'relation_schema' in CFG:
+        from experiments.relation_routes.protocol import validate
+        validate(CFG,require_bound=True)
     OUT=Path(CFG['output'])
     QN,GN=CFG['queries'],CFG['gallery'];WORKERS=CFG['workers']
     BUDGET=CFG['output_budget_bytes'];WORKER_AS=CFG['worker_address_space_limit_bytes']
@@ -70,6 +74,9 @@ def check_admission_manifest(cfg,manifest):
     if cfg['source'] in research_config.SOURCES:
         assert manifest['solver_id']==solver_id(cfg['source']),'Saved solver implementation differs'
         assert manifest['config']['commit']==cfg['commit'],'Saved execution commit differs'
+    if 'relation_schema' in cfg:
+        assert cfg==manifest['config'],'Bound relation configuration differs from computed run'
+        assert manifest['solver_id']==solver_id(cfg['source'])
 
 def fitting_binding(cfg):
     binding=validate_f1_config(cfg,require_bound=True)
@@ -78,6 +85,9 @@ def fitting_binding(cfg):
         binding['research_solver_id']=modern_solver(cfg['source']).SOLVER_ID
     if cfg['source'] in f1.SOURCES:
         binding.update(f1_solver_id=f1.SOLVER_ID,f1_weight_rule=f1.WEIGHT_RULE)
+    if 'relation_schema' in cfg:
+        from experiments.relation_routes.protocol import validate
+        binding.update(validate(cfg,require_bound=True))
     return binding
 
 def modern_solver(source):
@@ -90,6 +100,9 @@ def modern_solver(source):
     raise ValueError(source)
 
 def solver_id(source):
+    if source in ('camera_channel','th_target'):
+        from experiments.relation_routes.smoothing import SOLVER_ID
+        return SOLVER_ID
     if source in research_config.SOURCES:return modern_solver(source).SOLVER_ID
     return f1.SOLVER_ID if source in f1.SOURCES else certified.SOLVER_ID
 
@@ -110,6 +123,9 @@ def sources():
     for p,h in CFG['input_sha256'].items():assert sha(p)==h,p
 
 def resources(reserve=False):
+    if 'relation_schema' in CFG:
+        from experiments.relation_routes.full_run import resource_snapshot
+        return resource_snapshot(CFG,reserve=reserve)
     cg=Path('/sys/fs/cgroup');cur=int((cg/'memory.current').read_text());cap=int((cg/'memory.max').read_text())
     assert cur<=cap*.7,'RAM 70 percent stop'
     allocated=sum(p.stat().st_blocks*512 for p in OUT.rglob('*') if p.is_file()) if OUT.exists() else 0
@@ -135,7 +151,7 @@ def guard(stage):
     thread=threading.Thread(target=loop,daemon=True);thread.start();return stop,thread
 
 def initialize_worker(stage,config_path):
-    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS,ADMISSION_CAMERAS
+    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS,ADMISSION_CAMERAS,STAGE_CERTIFIER
     INIT_ERROR=None
     try:
         configure(config_path);resource.setrlimit(resource.RLIMIT_AS,(WORKER_AS,WORKER_AS))
@@ -145,9 +161,13 @@ def initialize_worker(stage,config_path):
         manifest=json.loads((OUT/'run-manifest.json').read_text())
         check_admission_manifest(CFG,manifest);SIG=manifest['signature']
         READBACK_KERNEL=READBACK_SUMS=None
+        STAGE_CERTIFIER=None
         ADMISSION_CAMERAS=load_admission_cameras(CFG,QN+GN)
         from MODEL.Paper_RFDP import PaperFullIterative as model
-        if CFG.get('relation_model','original')=='csw':
+        if 'relation_schema' in CFG:
+            from experiments.relation_routes.runtime import initialize
+            ENGINE,GRAPH,READBACK_KERNEL,READBACK_SUMS,STAGE_CERTIFIER=initialize(CFG,GRAPH,FULL,stage=='compute')
+        elif CFG.get('relation_model','original')=='csw':
             from experiments.stationary_measure.csw_graph import load_inputs,ReadbackKernel
             from experiments.reliability.reliability_model import ReliabilityIHyRDP
             cameras,support,_=load_inputs(CFG,FULL)
@@ -251,7 +271,7 @@ def accept_query(query):
             first=dest/f'{query:04d}.initial.jsonl.gz'
             assert sha(first)==row['initial_state_sha256']
             assert list(read_rows(first))==[next(read_rows(dest/f'{query:04d}.trace.jsonl.gz'))]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1))
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1),stage_certifier=STAGE_CERTIFIER)
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         if 'linear_systems' in row['diagnostics']:
@@ -290,13 +310,14 @@ def aggregate_inline_readback():
     for query in range(QN):(OUT/'queries'/f'{query:04d}.rankings.npy').unlink(missing_ok=True)
     return time.monotonic()-start
 
-def pool_stage(stage):
+def pool_stage(stage,queries=None,initial_completed=0):
     start=time.monotonic();fn=compute_query if stage=='compute' else accept_query
     pool=mp.get_context('spawn').Pool(WORKERS,initializer=initialize_worker,initargs=(stage,CONFIG_PATH));stop,thread=guard(stage)
     def stopped(signum,frame):raise RuntimeError('Stopped by signal '+str(signum))
     old=signal.signal(signal.SIGTERM,stopped)
     try:
-        for count,result in enumerate(pool.imap_unordered(fn,range(QN),chunksize=1),1):
+        work=range(QN) if queries is None else queries
+        for count,result in enumerate(pool.imap_unordered(fn,work,chunksize=1),initial_completed+1):
             if 'error' in result:
                 dump(OUT/'FAILED.json',dict(stage=stage,time=now(),**result));raise RuntimeError(result['error'])
             dump(OUT/(stage+'-progress.json'),dict(time=now(),stage=stage,completed=count,total=QN,last=result,seconds=time.monotonic()-start))
