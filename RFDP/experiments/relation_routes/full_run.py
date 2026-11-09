@@ -29,16 +29,33 @@ from experiments.continuous_fitting import full
 def allocated_cpu_count(cgroup=Path('/sys/fs/cgroup')):
     visible=len(os.sched_getaffinity(0)) if hasattr(os,'sched_getaffinity') else os.cpu_count()
     maximum=cgroup/'cpu.max'
-    text=maximum.read_text().strip() if maximum.exists() else 'max 100000'
+    if maximum.exists():text=maximum.read_text().strip()
+    else:
+        directory=next((cgroup/name for name in ('cpu','cpu,cpuacct')
+                        if (cgroup/name/'cpu.cfs_quota_us').exists()),None)
+        if directory is None:text='max 100000'
+        else:
+            quota=int((directory/'cpu.cfs_quota_us').read_text())
+            period=int((directory/'cpu.cfs_period_us').read_text())
+            text=f'{quota if quota>0 else "max"} {period}'
     quota,period=text.split()
     workers=visible if quota=='max' else min(visible,max(1,math.ceil(int(quota)/int(period))))
     return int(workers),dict(visible_affinity_cpus=visible,cpu_max=text,workers=int(workers),blas_threads=1)
 
 
+def allocated_memory(cgroup=Path('/sys/fs/cgroup')):
+    if (cgroup/'memory.max').exists():
+        cap=(cgroup/'memory.max').read_text().strip()
+        if cap=='max':raise RuntimeError('A finite memory allocation is required')
+        return int(cap),int((cgroup/'memory.current').read_text())
+    cap=int((cgroup/'memory/memory.limit_in_bytes').read_text())
+    if cap>=2**60:raise RuntimeError('A finite memory allocation is required')
+    return cap,int((cgroup/'memory/memory.usage_in_bytes').read_text())
+
+
 def resource_snapshot(cfg,reserve=False):
     cgroup=Path('/sys/fs/cgroup')
-    cap=int((cgroup/'memory.max').read_text())
-    cur=int((cgroup/'memory.current').read_text())
+    cap,cur=allocated_memory(cgroup)
     if cur>.7*cap:raise RuntimeError('RAM 70 percent stop')
     workers,cpu=allocated_cpu_count(cgroup)
     if workers!=cfg['workers']:raise RuntimeError('Allocated CPU count changed; rebind before execution')

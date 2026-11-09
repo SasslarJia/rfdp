@@ -139,6 +139,19 @@ class FullRelationProtocolTests(unittest.TestCase):
             with mock.patch.object(full_run.os,'sched_getaffinity',return_value={0,1},create=True):
                 self.assertEqual(full_run.allocated_cpu_count(cg)[0],2)
 
+    def test_cgroup_v1_and_v2_preserve_the_same_cpu_and_memory_allocation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cg=Path(temp);(cg/'cpu').mkdir();(cg/'memory').mkdir()
+            (cg/'cpu/cpu.cfs_quota_us').write_text('1600000')
+            (cg/'cpu/cpu.cfs_period_us').write_text('100000')
+            (cg/'memory/memory.limit_in_bytes').write_text('66571993088')
+            (cg/'memory/memory.usage_in_bytes').write_text('873558016')
+            with mock.patch.object(full_run.os,'sched_getaffinity',return_value=set(range(128)),create=True):
+                self.assertEqual(full_run.allocated_cpu_count(cg)[0],16)
+            self.assertEqual(full_run.allocated_memory(cg),(66571993088,873558016))
+            (cg/'memory.max').write_text('66571993088');(cg/'memory.current').write_text('873558016')
+            self.assertEqual(full_run.allocated_memory(cg),(66571993088,873558016))
+
     def test_real_worker_equations_and_actual_saved_score_readback_all_routes(self):
         for route in protocol.ROUTES:
             with self.subTest(route=route),tempfile.TemporaryDirectory() as temp:
