@@ -2,16 +2,76 @@
   "enabled_in_production": false,
   "execution": "experiments.relation_routes.local_timing --config <local-config.json>",
   "purpose": "Independently timed relation routes; explicit input paths and SHA bindings required",
-  "parameters": {"alpha": 5, "beta": 25, "step": 5, "depth": 500},
+  "parameters": {
+    "alpha": 5,
+    "beta": 25,
+    "step": 5,
+    "depth": 500
+  },
   "workers": 1,
   "blas_threads": 1,
-  "default_routes": ["original", "csw", "csw_grouped", "camera_channel", "th_target", "quaternary"],
-  "csw": {"rho": 0.5, "support_lambda": 0.25, "support_mode": "ordinary", "k": 20},
-  "csw_grouped": {"k_intra": 5, "k_inter": 20, "rho": 0.5, "support_lambda": 0.25, "group_definition": "same camera versus all other cameras", "stage": "graph preprocessing"},
-  "camera_channel": {"stage": "per-frontier quadratic smoothing", "channel_budget": "equal across nonempty same/cross channels before symmetric averaging", "keep_original_h_p_fitting": true},
-  "th_target": {"theta": 0.5, "stage": "per-frontier sparse plus rank-one smoothing", "target_affinity": "effective sparse boundary divided by target count", "keep_original_h_p_fitting": true},
-  "quaternary": {"diffusion": 0.99, "stage": "independent U-by-L tensor-product RDP control", "keep_original_hybrid_fitting": false, "saved_relation_matrix_required": true},
+  "default_routes": [
+    "original",
+    "csw",
+    "csw_grouped",
+    "camera_channel",
+    "th_target"
+  ],
+  "csw": {
+    "rho": 0.5,
+    "support_lambda": 0.25,
+    "support_mode": "ordinary",
+    "k": 20
+  },
+  "csw_grouped": {
+    "k_intra": 5,
+    "k_inter": 20,
+    "rho": 0.5,
+    "support_lambda": 0.25,
+    "group_definition": "same camera versus all other cameras",
+    "stage": "graph preprocessing"
+  },
+  "camera_channel": {
+    "stage": "per-frontier quadratic smoothing",
+    "channel_budget": "equal across nonempty same/cross channels before symmetric averaging",
+    "keep_original_h_p_fitting": true
+  },
+  "th_target": {
+    "theta": 0.5,
+    "stage": "per-frontier sparse plus rank-one smoothing",
+    "target_affinity": "effective sparse boundary divided by target count",
+    "keep_original_h_p_fitting": true
+  },
+  "quaternary": {
+    "diffusion": 0.99,
+    "stage": "independent U-by-L tensor-product RDP control",
+    "keep_original_hybrid_fitting": false,
+    "saved_relation_matrix_required": true,
+    "status": "stopped_current_form",
+    "execute": false,
+    "reason": "Measured complete-query runtime >=21.8108x baseline; preserved for reproducibility only"
+  },
   "parameter_status": "fixed first runtime configurations; not accuracy-selected optima",
-  "local_config_required": ["cache", "cache_sha256", "output", "query_id", "query_count", "gallery_count", "routes", "parameters", "k_intra", "k_inter", "rho", "support_lambda", "theta", "diffusion"],
-  "cache_files": ["features.npy", "affinity.npy", "graph.npz", "cameras.npy"]
+  "local_config_required": [
+    "cache",
+    "cache_sha256",
+    "output",
+    "query_id",
+    "query_count",
+    "gallery_count",
+    "routes",
+    "parameters",
+    "k_intra",
+    "k_inter",
+    "rho",
+    "support_lambda",
+    "theta",
+    "diffusion"
+  ],
+  "cache_files": [
+    "features.npy",
+    "affinity.npy",
+    "graph.npz",
+    "cameras.npy"
+  ]
 }
