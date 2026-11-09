@@ -88,31 +88,33 @@ def checkout():
     return head
 
 
-def checked_inputs(base):
+def checked_inputs(base,input_id='market-osnet'):
     cache=Path(base['cache']).resolve();mat=Path(base['mat']).resolve()
-    expected={str(cache/name):value for name,value in protocol.FROZEN['cache_input_hashes'].items()}
-    expected[str(mat)]=protocol.FROZEN['feature_sha256']
+    frozen=protocol.input_spec(input_id)
+    expected={str(cache/name):value for name,value in frozen['cache_input_hashes'].items()}
+    expected[str(mat)]=frozen['feature_sha256']
     for path,value in expected.items():
         if full.sha(path)!=value:raise ValueError('Frozen input SHA mismatch: '+path)
     return cache,mat,expected
 
 
-def prepare(base_path,root,references_path):
+def prepare(base_path,root,references_path,input_id='market-osnet'):
     """Required graph construction, not a query experiment or feature extraction."""
     from .csw_grouped import build_grouped_csw_inputs,validate_grouped_inputs
     from .report import load_references
     root=Path(root).resolve();root.mkdir(parents=True,exist_ok=True)
     with lock(root/'.execution.lock'):
         head=checkout();base=json.loads(Path(base_path).read_text())
-        cache,mat,inputs=checked_inputs(base)
+        frozen=protocol.input_spec(input_id);n=frozen['queries']+frozen['gallery']
+        cache,mat,inputs=checked_inputs(base,input_id)
         for previous in [base.get('output'),str(cache),str(mat.parent)]:
             if previous:
                 old=Path(previous).resolve()
                 if root==old or root in old.parents or old in root.parents:
                     raise ValueError('Execution root overlaps existing input or result directory')
-        refs=load_references(references_path)
+        refs=load_references(references_path,input_id)
         workers,cpu=allocated_cpu_count()
-        probe=dict(protocol.recipe('camera_channel'),workers=workers,output=str(root/'runs/camera_channel'))
+        probe=dict(protocol.recipe('camera_channel',input_id),workers=workers,output=str(root/'runs/camera_channel'))
         resource_snapshot(probe,reserve=True)
         marker=root/'PREPARED.json'
         if marker.exists():
@@ -129,12 +131,14 @@ def prepare(base_path,root,references_path):
         assets=root/'inputs';assets.mkdir(exist_ok=True)
         camera_file=assets/'cameras.npy'
         data=loadmat(mat,variable_names=['query_cam','gallery_cam'])
-        cameras=np.r_[data['query_cam'].ravel(),data['gallery_cam'].ravel()]
-        if cameras.shape!=(23100,) or not np.all(np.isfinite(cameras)) or not np.all(cameras==cameras.astype(np.int64)):
+        qcam,gcam=data['query_cam'].ravel(),data['gallery_cam'].ravel()
+        if (len(qcam),len(gcam))!=(frozen['queries'],frozen['gallery']):raise ValueError('Official query/gallery camera population differs')
+        cameras=np.r_[qcam,gcam]
+        if cameras.shape!=(n,) or not np.all(np.isfinite(cameras)) or not np.all(cameras==cameras.astype(np.int64)):
             raise ValueError('Invalid frozen camera order')
         np.save(camera_file,cameras.astype(np.int64));cameras=cameras.astype(np.int64)
         affinity=np.load(cache/'affinity.npy',mmap_mode='r')
-        if affinity.shape!=(23100,23100):raise ValueError('Official complete affinity required')
+        if affinity.shape!=(n,n):raise ValueError('Official complete affinity required')
         asset_marker=assets/'GROUPED_COMPLETE.json';start=time.monotonic()
         if asset_marker.exists():
             gm=json.loads(asset_marker.read_text())
@@ -157,7 +161,7 @@ def prepare(base_path,root,references_path):
         common=dict(inputs);common[str(camera_file)]=full.sha(camera_file)
         configs=root/'configs';configs.mkdir(exist_ok=True)
         for route in protocol.ROUTES:
-            cfg=protocol.recipe(route)
+            cfg=protocol.recipe(route,input_id)
             cfg.update(path_binding='bound',commit=head,cache=str(cache),mat=str(mat),workers=workers,
                 cpu_allocation=cpu,camera_ids_file=str(camera_file),input_sha256=dict(common),
                 output=str(root/'runs'/route),binding_source='verified_frozen_sha_and_generated_grouped_graph')
@@ -171,7 +175,7 @@ def prepare(base_path,root,references_path):
             full.dump(path,cfg)
         full.dump(root/'references.json',refs)
         files=list(configs.glob('*.json'))+list(assets.glob('*'))+[root/'references.json']
-        result=dict(status='prepared_not_started',commit=head,routes=list(protocol.ROUTES),
+        result=dict(status='prepared_not_started',commit=head,input_id=input_id,routes=list(protocol.ROUTES),
             cpu=cpu,references_sha256=protocol.digest(refs),
             files_sha256={str(p.relative_to(root)):full.sha(p) for p in files if p.is_file()})
         full.dump(marker,result)
@@ -210,8 +214,8 @@ def accepted_result(out,cfg=None):
     acceptance=json.loads(path.read_text());manifest=json.loads((out/'run-manifest.json').read_text())
     actual=manifest['config'];protocol.validate(actual,require_bound=True)
     if cfg is not None and actual!=cfg:raise ValueError('Accepted run config changed')
-    if (acceptance['status']!='accepted_full_population' or acceptance['queries']!=3368 or
-        acceptance['gallery']!=19732 or acceptance['signature']!=manifest['signature'] or
+    if (acceptance['status']!='accepted_full_population' or acceptance['queries']!=actual['queries'] or
+        acceptance['gallery']!=actual['gallery'] or acceptance['signature']!=manifest['signature'] or
         acceptance['signature']!=protocol.digest(actual)):
         raise ValueError('Invalid full-population acceptance')
     for name,key in [('metrics.json','metrics_sha256'),('rankings.npy','rankings_sha256')]:
@@ -255,7 +259,7 @@ def run_one(config_path,resume=False):
             latest_attempt_seconds=seconds,git_commit=cfg['commit'],inline_full_score_readback=True))
         (out/'compute.exit').write_text('0\n')
     complete=json.loads((out/'COMPUTE_COMPLETE.json').read_text())
-    if complete['signature']!=signature or (complete['query_count'],complete['gallery_count'])!=(3368,19732):
+    if complete['signature']!=signature or (complete['query_count'],complete['gallery_count'])!=(cfg['queries'],cfg['gallery']):
         raise ValueError('Combined computation binding differs')
     seconds=full.aggregate_inline_readback();full.sources()
     rows=[json.loads((out/'accepted'/f'{q:04d}.json').read_text()) for q in range(full.QN)]
@@ -276,6 +280,8 @@ def run_queue(root,resume=False):
     root=Path(root).resolve()
     with lock(root/'.execution.lock'):
         prepared=json.loads((root/'PREPARED.json').read_text())
+        if prepared.get('input_id','market-osnet')!='market-osnet':
+            raise ValueError('Use launch_one and a Market decision for each transfer; no unconditional transfer queue')
         if prepared['routes']!=list(protocol.ROUTES) or prepared['commit']!=checkout():
             raise ValueError('Prepared queue binding changed')
         for name,value in prepared['files_sha256'].items():
@@ -302,16 +308,17 @@ def main():
     parser.add_argument('--base-config',type=Path)
     parser.add_argument('--references',type=Path)
     parser.add_argument('--resume',action='store_true')
+    parser.add_argument('--input-id',choices=tuple(protocol.INPUTS),default='market-osnet')
     args=parser.parse_args()
     if args.action=='recipes':
         args.root.mkdir(parents=True,exist_ok=True)
         for route in protocol.ROUTES:
-            path=args.root/f'market-osnet.{route}.json'
+            path=args.root/f'{args.input_id}.{route}.json'
             if path.exists():raise ValueError('Recipe already exists: '+str(path))
-            full.dump(path,protocol.recipe(route))
+            full.dump(path,protocol.recipe(route,args.input_id))
     elif args.action=='prepare':
         if not args.base_config or not args.references:parser.error('prepare requires base-config and references')
-        print(json.dumps(prepare(args.base_config,args.root,args.references)))
+        print(json.dumps(prepare(args.base_config,args.root,args.references,args.input_id)))
     elif args.action=='run':run_queue(args.root,args.resume)
     else:
         from .report import collect

@@ -10,18 +10,18 @@ from unittest import mock
 
 import numpy as np
 from scipy import sparse
-from experiments.relation_routes import protocol, runtime, full_run, report
+from experiments.relation_routes import protocol, runtime, full_run, report, launch_one
 from experiments.relation_routes.csw_grouped import build_grouped_csw_inputs
 from experiments.continuous_fitting import full, certified
 from MODEL.Paper_RFDP import PaperFullIterative as model
 
 
-def bound(route,root):
-    cfg=protocol.recipe(route)
+def bound(route,root,input_id='market-osnet'):
+    cfg=protocol.recipe(route,input_id);frozen=protocol.input_spec(input_id)
     cfg.update(path_binding='bound',commit='a'*40,cache=str(root/'cache'),mat=str(root/'features.mat'),
                output=str(root/'runs'/route),camera_ids_file=str(root/'cameras.npy'),workers=16)
-    cfg['input_sha256']={str(root/'cache'/name):value for name,value in protocol.FROZEN['cache_input_hashes'].items()}
-    cfg['input_sha256'][cfg['mat']]=protocol.FROZEN['feature_sha256']
+    cfg['input_sha256']={str(root/'cache'/name):value for name,value in frozen['cache_input_hashes'].items()}
+    cfg['input_sha256'][cfg['mat']]=frozen['feature_sha256']
     cfg['input_sha256'][cfg['camera_ids_file']]='b'*64
     if route=='csw_grouped':
         for key,name in [('grouped_graph_file','grouped.npz'),('support_file','support.npz'),('grouped_metadata_file','metadata.json')]:
@@ -30,9 +30,10 @@ def bound(route,root):
     return cfg
 
 
-def references():
-    return dict(records=[dict(method=name,input_key='market-osnet',queries=3368,gallery=19732,
-        feature_sha256=protocol.FROZEN['feature_sha256'],mAP=.5,rank1=.6,mINP=.4,
+def references(input_id='market-osnet'):
+    frozen=protocol.input_spec(input_id)
+    return dict(records=[dict(method=name,input_key=input_id,queries=frozen['queries'],gallery=frozen['gallery'],
+        feature_sha256=frozen['feature_sha256'],mAP=.5,rank1=.6,mINP=.4,
         provenance={'verification':{'official_population_verified':True}}) for name in protocol.REFERENCE_METHODS])
 
 
@@ -68,6 +69,54 @@ def tiny_transaction(root,route):
 
 
 class FullRelationProtocolTests(unittest.TestCase):
+    def test_four_official_inputs_keep_parameters_and_cannot_swap_feature_bindings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            for input_id in protocol.INPUTS:
+                for route in protocol.ROUTES:
+                    cfg=bound(route,root,input_id)
+                    self.assertEqual((cfg['alpha'],cfg['beta'],cfg['step'],cfg['depth']),(5,25,5,500))
+                    self.assertEqual((cfg['queries'],cfg['gallery']),
+                        (2228,17661) if input_id.startswith('duke') else (3368,19732))
+                    bad=copy.deepcopy(cfg);bad['feature_sha256']='0'*64
+                    with self.assertRaises(ValueError):protocol.validate(bad,True)
+            with self.assertRaises(ValueError):protocol.recipe('camera_channel','historical-dev')
+
+    def test_duke_report_requires_matching_official_reference_population(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);ref=root/'refs.json';full.dump(ref,references('duke-osnet'))
+            result=report.collect(root,ref)
+            self.assertEqual(result['records'][0]['queries'],2228)
+            self.assertIn('2228查询与17661图库',(root/'结果汇总.md').read_text())
+            with self.assertRaises(ValueError):report.load_references(ref,'market-osnet')
+
+    def test_transfer_requires_a_matching_complete_market_assessment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/'target';(root/'configs').mkdir(parents=True)
+            full.dump(root/'configs/camera_channel.json',bound('camera_channel',root,'duke-osnet'))
+            with self.assertRaises(ValueError):launch_one.transfer_gate(root,'camera_channel',None)
+            parent=Path(temp)/'market';parent.mkdir()
+            full.dump(parent/'run-manifest.json',dict(config=bound('camera_channel',parent)))
+            (parent/'FULL_ACCEPTANCE.json').write_text('unit fixture acceptance, separately mocked')
+            decision=dict(verdict='continue_transfer',route='camera_channel',allowed_inputs=['duke-osnet'],
+                market_run=str(parent),market_acceptance_sha256=full.sha(parent/'FULL_ACCEPTANCE.json'),
+                rationale='Unit test of the decision binding, not a scientific result')
+            path=Path(temp)/'decision.json';full.dump(path,decision)
+            with mock.patch.object(launch_one,'accepted_result',return_value=None):
+                with self.assertRaises(ValueError):launch_one.transfer_gate(root,'camera_channel',path)
+            with mock.patch.object(launch_one,'accepted_result',return_value={'status':'accepted_full_population'}):
+                launch_one.transfer_gate(root,'camera_channel',path)
+                for key,value in [('route','th_target'),('verdict','stop'),('market_acceptance_sha256','0'*64)]:
+                    bad=dict(decision);bad[key]=value;full.dump(path,bad)
+                    with self.assertRaises(ValueError):launch_one.transfer_gate(root,'camera_channel',path)
+
+    def test_unconditional_queue_cannot_bypass_transfer_review(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);full.dump(root/'PREPARED.json',dict(input_id='duke-osnet'))
+            with mock.patch.object(full_run,'run_one') as run:
+                with self.assertRaises(ValueError):full_run.run_queue(root)
+                self.assertFalse(run.called)
+
     def test_checked_in_configs_match_the_actual_prepare_recipes(self):
         folder=full.REPO/'configs/relation-routes/full-market-osnet'
         self.assertEqual(len(list(folder.glob('*.json'))),3)
