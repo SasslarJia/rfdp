@@ -29,7 +29,7 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None,score_decoder=None):
     from . import f1, research_config
     if source in research_config.SOURCES:
         assert admission_policy=='original' and kernel is None
@@ -75,7 +75,15 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             assert t['returned_scores'] is None and t['event'] is None and residual==0
             nominated=u[:depth-len(labeled)].tolist();no_solve+=1
         else:
-            values=unpack(t['returned_scores']);ev=t['event']
+            # Hybrid costs remain strictly positive by default. Independent
+            # relationship models may supply a signed decoder plus their own
+            # equation/projection certificate; this does not relax HyRDP.
+            if score_decoder is not None:
+                assert stage_certifier is not None
+                values=score_decoder(t['returned_scores'])
+            else:
+                values=unpack(t['returned_scores'])
+            ev=t['event']
             digest=hashlib.sha256(json.dumps(t['returned_scores'],separators=(',',':')).encode()).hexdigest()
             assert ev['returned_scores_sha256']==digest and ev['size']==len(u) and ev['source']==source
             if stage_certifier is not None:

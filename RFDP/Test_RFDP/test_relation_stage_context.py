@@ -3,10 +3,19 @@ import unittest
 import numpy as np
 from scipy import sparse
 from MODEL.Paper_RFDP.PaperFullIterative import FullIHyRDP, solve_hybrid_sparse
-from experiments.relation_routes.local_timing import boundary_matrix
+from experiments.relation_routes.local_timing import boundary_matrix, unpack_signed
+from experiments.continuous_fitting import certified
 
 
 class StageContextTests(unittest.TestCase):
+    def test_signed_decoder_does_not_relax_hybrid_decoder(self):
+        points=[certified.mp.mpf(-.125),certified.mp.mpf(0),certified.mp.mpf(.25)]
+        encoded=[certified.packed(x) for x in points]
+        self.assertEqual(unpack_signed(encoded),points)
+        with self.assertRaises(ValueError):certified.unpack(encoded)
+        for invalid in ([0,2,0,2],[1,0,0,0],[0,0,-123,-1]):
+            with self.assertRaises(ValueError):unpack_signed([invalid])
+
     def test_default_and_contextual_original_are_identical(self):
         rng = np.random.default_rng(23)
         full = rng.uniform(.1, .9, (14,14))

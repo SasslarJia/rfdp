@@ -44,6 +44,21 @@ def dump(path, obj):
     Path(path).write_text(json.dumps(obj, ensure_ascii=False, indent=2, allow_nan=False) + '\n')
 
 
+def unpack_signed(values):
+    """Canonical finite MP encodings for independent signed relation scores."""
+    out = []
+    for value in values:
+        if len(value) != 4 or any(type(v) is not int for v in value):
+            raise ValueError('Invalid signed MP score encoding')
+        sign, man, exp, bits = value
+        if value == [0, 0, 0, 0]:
+            out.append(certified.mp.mpf(0));continue
+        if sign not in (0,1) or man <= 0 or man.bit_length() != bits or not man & 1 or abs(exp) > 100000:
+            raise ValueError('Nonfinite/noncanonical signed MP score')
+        out.append(certified.mp.make_mpf(tuple(value)))
+    return out
+
+
 def boundary_matrix(graph, indices, targets, bridges):
     """Effective U-to-L affinity, including only this round's temporary bridges."""
     result = graph[indices][:, list(targets)].tolil()
@@ -184,10 +199,14 @@ def execute(route, query, graph, affinity, features, cameras, cfg, dest):
     np.save(dest/'prefix.npy', prefix)
     np.save(dest/'rankings.npy', rank)
     compute = time.perf_counter() - wall_start
+    dump(dest/'compute-checkpoint.json',dict(compute_seconds=compute,
+        diagnostics=diagnostics, source=source, query=query,
+        score_certificate_precisions=sorted(set(event.get('dps',0) for event in events))))
     readback_start = time.perf_counter()
     acceptance = verify_query(graph, affinity, similarity, query, np.load(dest/'prefix.npy'),
         np.load(dest/'rankings.npy'), read_rows(trace_path), source, cfg['query_count'], 500,
-        kernel=kernel, full_sums=sums, stage_certifier=certify)
+        kernel=kernel, full_sums=sums, stage_certifier=certify,
+        score_decoder=unpack_signed if source == 'quaternary' else None)
     readback = time.perf_counter() - readback_start
     assert rank.shape == (cfg['gallery_count'],)
     item = dict(route=route, source=source, query=query, setup_seconds=setup,
@@ -264,7 +283,76 @@ def run(config):
     dump(output/'timing.json',report)
 
 
+def readback_quaternary(config):
+    """Recover readback from complete saved artifacts; never run a solver.
+
+    A failed old reader might not have saved the final compute stopwatch. In
+    that case retain a measured lower bound from its final progress record;
+    never fabricate an exact time or repeat diffusion just for a missing clock.
+    """
+    from .quaternary import certify_saved
+    cfg=json.loads(Path(config).read_text())
+    cache,output=Path(cfg['cache']),Path(cfg['output'])
+    report=json.loads((output/'timing.json').read_text())
+    dest=output/'quaternary';query=cfg['query_id']
+    for name,digest in cfg['cache_sha256'].items():
+        assert sha(cache/name)==digest
+    graph=sparse.load_npz(cache/'graph.npz').astype(np.float64).tocsr()
+    graph.eliminate_zeros();graph.sort_indices()
+    affinity=np.load(cache/'affinity.npy',mmap_mode='r')
+    features=np.load(cache/'features.npy',mmap_mode='r')
+    sums=np.asarray(affinity.sum(axis=1,dtype=np.float64))
+    stage=0
+    def check(w,e,values,event,*,indices,targets,bridges,**kwargs):
+        nonlocal stage
+        state=dest/'pair-states'/f'{stage:04d}.npy'
+        assert sha(state)==event['relation_state_sha256']
+        result=certify_saved(w,boundary_matrix(graph,indices,targets,bridges),
+            graph[list(targets)][:,list(targets)],np.load(state),np.asarray(values,dtype=float),
+            diffusion=cfg['diffusion'],require_rank_certificate=True)
+        stage+=1
+        return dict(result,prefix=sorted(range(len(values)),key=lambda i:(values[i],i))[:5],
+                    relative=result['relative_residual'])
+    start=time.perf_counter()
+    acceptance=verify_query(graph,affinity,features@features[query],query,
+        np.load(dest/'prefix.npy'),np.load(dest/'rankings.npy'),read_rows(dest/'trace.jsonl.gz'),
+        'quaternary',cfg['query_count'],500,full_sums=sums,stage_certifier=check,score_decoder=unpack_signed)
+    elapsed=time.perf_counter()-start
+    dump(dest/'acceptance.json',acceptance)
+    checkpoint=dest/'compute-checkpoint.json'
+    compute=None;lower=None
+    if checkpoint.exists():compute=json.loads(checkpoint.read_text())['compute_seconds']
+    else:
+        log=Path(cfg['worker_log'])
+        progress=[json.loads(line) for line in log.read_text().splitlines() if line.startswith('{')]
+        last=[row for row in progress if row.get('route')=='quaternary' and row.get('stages')==100]
+        if last:lower=last[-1]['seconds']
+    base=next(row for row in report['runs'] if row['route']=='original')
+    item=dict(route='quaternary',source='quaternary',query=query,
+        setup_seconds=json.loads((dest/'preparation.json').read_text())['seconds'],
+        compute_seconds=compute,compute_seconds_lower_bound=lower,
+        paired_compute_ratio=None if compute is None else compute/base['compute_seconds'],
+        paired_compute_ratio_lower_bound=None if lower is None else lower/base['compute_seconds'],
+        readback_seconds=elapsed,full_query_accepted=True,acceptance=acceptance,
+        timing_note='Readback recovered without repeating diffusion; absent final clock remains absent',
+        certificate_basis='assembled float64 operators with conservative residual and ranking error bounds',
+        compute_commit=report['commit'],readback_code_sha256={
+            'local_timing.py':sha(Path(__file__)),
+            'verify.py':sha(REPO/'RFDP/experiments/continuous_fitting/verify.py'),
+            'quaternary.py':sha(Path(__file__).with_name('quaternary.py'))},
+        files_sha256={p.name:sha(p) for p in (dest/'prefix.npy',dest/'rankings.npy',dest/'trace.jsonl.gz')})
+    dump(dest/'timing.json',item)
+    report['runs']=[row for row in report['runs'] if row['route']!='quaternary']+[item]
+    for failure in report['failures']:
+        if failure['route']=='quaternary':failure['resolved_by_saved_artifact_readback']=True
+    report['status']='completed_with_resolved_readback_interface_failure'
+    dump(output/'timing.json',report)
+    print(json.dumps(item,ensure_ascii=False),flush=True)
+
+
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',type=Path,required=True)
-    run(parser.parse_args().config)
+    parser.add_argument('--readback-only',choices=['quaternary'])
+    args=parser.parse_args()
+    (readback_quaternary if args.readback_only else run)(args.config)
