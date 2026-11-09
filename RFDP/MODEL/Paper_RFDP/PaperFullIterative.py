@@ -85,7 +85,7 @@ class FullIHyRDP:
     Programming errors, invalid inputs and timeouts never trigger a tail.
     """
     def __init__(self, graph, full_similarity, alpha=5., beta=25., step=5, *,
-                 admission_policy='original', camera_ids=None):
+                 admission_policy='original', camera_ids=None, stage_solver=None):
         self.w = sparse.csr_matrix(graph, dtype=np.float64)
         self.w.eliminate_zeros()
         self.n = self.w.shape[0]
@@ -100,6 +100,9 @@ class FullIHyRDP:
             raise ValueError('Invalid parameters')
         self.full = full_similarity
         self.alpha, self.beta, self.step = float(alpha), float(beta), int(step)
+        # Optional stage equation; candidate discovery, bridges and admission
+        # remain Algorithm 1. Context contains no identity labels.
+        self.stage_solver = stage_solver
         if admission_policy not in ADMISSION_POLICIES:
             raise ValueError('Invalid admission policy')
         self.admission_policy = admission_policy
@@ -208,8 +211,14 @@ class FullIHyRDP:
             else:
                 try:
                     solver_stats = {}
-                    scores, residual = solve_hybrid_sparse(self.w[u][:, u], ew[u], self.alpha,
-                                                           self.beta, diagnostics=solver_stats)
+                    if self.stage_solver is None:
+                        scores, residual = solve_hybrid_sparse(self.w[u][:, u], ew[u], self.alpha,
+                                                               self.beta, diagnostics=solver_stats)
+                    else:
+                        scores, residual = self.stage_solver(
+                            self.w[u][:, u], ew[u], self.alpha, self.beta,
+                            diagnostics=solver_stats, indices=u,
+                            targets=tuple(labeled), bridges=tuple(edges))
                 except np.linalg.LinAlgError as exc:
                     if not numerical_tail:
                         raise

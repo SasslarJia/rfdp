@@ -29,7 +29,7 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None):
     from . import f1, research_config
     if source in research_config.SOURCES:
         assert admission_policy=='original' and kernel is None
@@ -78,7 +78,11 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             values=unpack(t['returned_scores']);ev=t['event']
             digest=hashlib.sha256(json.dumps(t['returned_scores'],separators=(',',':')).encode()).hexdigest()
             assert ev['returned_scores_sha256']==digest and ev['size']==len(u) and ev['source']==source
-            if source in research_config.SOURCES:
+            if stage_certifier is not None:
+                c=stage_certifier(graph[u][:,u],ew[u],values,ev,
+                    alpha=alpha,beta=beta,source=source,indices=u,
+                    targets=tuple(labeled),bridges=tuple(expected_bridges))
+            elif source in research_config.SOURCES:
                 from .full import modern_solver
                 c=modern_solver(source).certify_saved(graph[u][:,u],ew[u],values,ev,alpha=alpha,beta=beta,source=source)
             elif source in f1.SOURCES:
