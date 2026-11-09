@@ -240,7 +240,7 @@ def run_one(config_path,resume=False):
     else:
         out.mkdir(parents=True);(out/'queries').mkdir();(out/'accepted').mkdir()
         full.dump(out/'run-manifest.json',dict(signature=signature,config=cfg,time=full.now(),
-            resources=initial,static_total_bytes=total,shared_mapping_bytes=shared,solver_id=full.solver_id(cfg['source'])))
+            resources=initial,static_total_bytes=total,shared_mapping_bytes=shared,solver_id=full.solver_id(cfg['source']),execution_commit=full.execution_revision()))
     failure=out/'FAILED.json'
     if failure.exists():
         with (out/'attempt-history.jsonl').open('a') as stream:stream.write(json.dumps(json.loads(failure.read_text()))+'\n')
@@ -256,13 +256,14 @@ def run_one(config_path,resume=False):
         full.dump(out/'COMPUTE_COMPLETE.json',dict(status='computed_and_independently_evaluated',
             signature=signature,query_count=full.QN,gallery_count=full.GN,
             rankings_sha256=full.sha(out/'rankings.npy'),independent=metric,
-            latest_attempt_seconds=seconds,git_commit=cfg['commit'],inline_full_score_readback=True))
+            latest_attempt_seconds=seconds,git_commit=full.execution_revision(),configuration_commit=cfg['commit'],inline_full_score_readback=True))
         (out/'compute.exit').write_text('0\n')
     complete=json.loads((out/'COMPUTE_COMPLETE.json').read_text())
     if complete['signature']!=signature or (complete['query_count'],complete['gallery_count'])!=(cfg['queries'],cfg['gallery']):
         raise ValueError('Combined computation binding differs')
     seconds=full.aggregate_inline_readback();full.sources()
     rows=[json.loads((out/'accepted'/f'{q:04d}.json').read_text()) for q in range(full.QN)]
+    execution_commits=sorted({json.loads((out/'queries'/f'{q:04d}.json').read_text()).get('execution_commit',cfg['commit']) for q in range(full.QN)})
     if max(r['max_recomputed_residual'] for r in rows)>1e-8:raise ValueError('Residual acceptance failed')
     full.dump(out/'FULL_ACCEPTANCE.json',dict(status='accepted_full_population',signature=signature,
         time=full.now(),queries=full.QN,gallery=full.GN,
@@ -270,7 +271,7 @@ def run_one(config_path,resume=False):
         solver_calls=sum(r['solver_calls'] for r in rows),
         rankings_sha256=full.sha(out/'rankings.npy'),metrics_sha256=full.sha(out/'metrics.json'),
         actual_saved_scores_recomputed=True,all_frontiers_bridges_rankings_rebuilt=True,
-        certificate_implementation_shared=True,git_commit=cfg['commit'],seconds=seconds,
+        certificate_implementation_shared=True,git_commit=full.execution_revision(),configuration_commit=cfg['commit'],execution_commits=execution_commits,seconds=seconds,
         readback_performed_inline=True,retained_queries=cfg['retained_queries'],initial_states_retained=True))
     return 'completed_full_population'
 

@@ -228,7 +228,9 @@ def certify_saved(w, e, values, alpha=5., beta=25., source='continuous'):
 def solve(w, e, alpha=5., beta=25., source='continuous'):
     start = time.monotonic()
     w, e, _, nc = original.validate(w, e, alpha, beta)
-    if len(e) > 8192: raise original.ArithmeticFailure('Local stop limit 8192; no truncation')
+    # Keep the complete frontier. Production workers already enforce actual
+    # address-space, cgroup memory and disk budgets; node count is not a bound
+    # on sparse-solver memory and must not reject an otherwise valid system.
     # Exact symmetric preconditioning; this changes neither the target nor
     # which actual returned x values the certificate checks.
     score_scale = None

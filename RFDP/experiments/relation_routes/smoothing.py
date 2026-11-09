@@ -75,8 +75,8 @@ class System:
     def __init__(self, w, e, alpha, beta, source, cameras, target_count, theta):
         self.w, self.e, _, self.components = original.validate(w, e, alpha, beta)
         self.n = len(self.e)
-        if self.n > 8192:
-            raise ArithmeticFailure('Local stop limit 8192; no truncation')
+        # Full sparse frontiers are limited by the runner's resource budgets,
+        # not an arbitrary node-count cap. Certification is unchanged.
         if source not in SOURCES:
             raise ValueError('Unknown smoothing route')
         self.alpha, self.beta, self.source = float(alpha), float(beta), source

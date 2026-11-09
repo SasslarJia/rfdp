@@ -59,7 +59,8 @@ def collect(root,references_path):
             mean_query_compute_seconds=sum(r['compute_seconds'] for r in runtimes)/qn,
             mean_query_readback_seconds=sum(r['readback_seconds'] for r in runtimes)/qn,
             acceptance_sha256=full.sha(out/'FULL_ACCEPTANCE.json'),metrics_sha256=full.sha(out/'metrics.json'),
-            commit=cfg['commit'],feature_sha256=cfg['feature_sha256'],
+            commit=accepted.get('git_commit',cfg['commit']),configuration_commit=cfg['commit'],
+            execution_commits=accepted.get('execution_commits',[cfg['commit']]),feature_sha256=cfg['feature_sha256'],
             delta_percentage_points={k:100*(v-parent[k]) for k,v in
                 [('mAP',metrics['mAP']),('rank1',metrics['rank-1']),('mINP',metrics['mINP'])]})
         records.append(row)

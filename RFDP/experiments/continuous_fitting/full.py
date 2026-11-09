@@ -18,6 +18,7 @@ REPO=Path(__file__).resolve().parents[3]
 READBACK_KERNEL=READBACK_SUMS=None
 ADMISSION_CAMERAS=None
 STAGE_CERTIFIER=None
+EXECUTION_COMMIT=None
 
 def sha(path):
     h=hashlib.sha256()
@@ -116,10 +117,31 @@ def install_solver(cfg):
 def inline_readback():
     return CFG.get('trace_retention','all')=='sampled_after_readback'
 
-def sources():
+def execution_revision():
+    """Bind an explicitly reviewed compatible repair without relabeling old data.
+
+    The optional sidecar is an operator's recorded code review, not automatic
+    proof of mathematical equivalence. It pins the original config, old/new
+    revisions and complete code diff. Scientific config and old signatures stay
+    immutable; each new query records the code that actually computed it.
+    """
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
-    assert head==CFG['commit'],'Git execution revision changed'
     assert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=REPO,text=True).strip(),'Tracked execution files changed'
+    if head!=CFG['commit']:
+        path=Path(CONFIG_PATH).with_suffix('.repair.json')
+        if not path.exists():raise ValueError('Git execution revision changed without a reviewed repair')
+        repair=json.loads(path.read_text())
+        if (repair.get('base_commit')!=CFG['commit'] or repair.get('execution_commit')!=head or
+            repair.get('config_sha256')!=sha(CONFIG_PATH) or
+            repair.get('scientific_config_unchanged') is not True or not repair.get('rationale')):
+            raise ValueError('Compatible repair binding differs')
+        diff=subprocess.check_output(['git','diff','--binary',CFG['commit'],head,'--'],cwd=REPO)
+        if hashlib.sha256(diff).hexdigest()!=repair.get('code_diff_sha256'):
+            raise ValueError('Reviewed repair diff changed')
+    return head
+
+def sources():
+    execution_revision()
     for p,h in CFG['input_sha256'].items():assert sha(p)==h,p
 
 def resources(reserve=False):
@@ -151,10 +173,11 @@ def guard(stage):
     thread=threading.Thread(target=loop,daemon=True);thread.start();return stop,thread
 
 def initialize_worker(stage,config_path):
-    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS,ADMISSION_CAMERAS,STAGE_CERTIFIER
+    global ENGINE,GRAPH,FULL,X,SIG,INIT_ERROR,READBACK_KERNEL,READBACK_SUMS,ADMISSION_CAMERAS,STAGE_CERTIFIER,EXECUTION_COMMIT
     INIT_ERROR=None
     try:
-        configure(config_path);resource.setrlimit(resource.RLIMIT_AS,(WORKER_AS,WORKER_AS))
+        configure(config_path);EXECUTION_COMMIT=execution_revision()
+        resource.setrlimit(resource.RLIMIT_AS,(WORKER_AS,WORKER_AS))
         cache=Path(CFG['cache']);GRAPH=sparse.load_npz(cache/'graph.npz').astype(np.float64).tocsr();GRAPH.eliminate_zeros();GRAPH.sort_indices()
         FULL=np.load(cache/'affinity.npy',mmap_mode='r');X=np.load(cache/'features.npy',mmap_mode='r')
         assert FULL.shape==(QN+GN,QN+GN) and X.shape[0]==QN+GN
@@ -236,6 +259,7 @@ def compute_query(query):
         row=dict(query=query,source=CFG['source'],signature=SIG,diagnostics=diag,seconds=time.monotonic()-start,
                  peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if sys.platform=='darwin' else 1024),
                  trace_sha256=sha(trace),prefix_sha256=sha(pp),rankings_sha256=sha(rp),pid=os.getpid())
+        if EXECUTION_COMMIT is not None:row['execution_commit']=EXECUTION_COMMIT
         row.update(binding)
         if CFG.get('retain_initial_state'):
             assert first_state is not None

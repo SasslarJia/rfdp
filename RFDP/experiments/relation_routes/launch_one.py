@@ -43,7 +43,10 @@ def launch(root,route,resume=False,decision_path=None):
     if route not in protocol.ROUTES:raise ValueError('Unknown active route')
     with lock(root/'.execution.lock'):
         prepared=json.loads((root/'PREPARED.json').read_text())
-        if prepared['commit']!=checkout():raise ValueError('Prepared checkout differs')
+        if prepared['commit']!=checkout():
+            full.configure(root/'configs'/f'{route}.json')
+            if prepared['commit']!=full.CFG['commit']:raise ValueError('Prepared configuration revision differs')
+            full.execution_revision()  # Explicitly recorded compatible repair only.
         for name,value in prepared['files_sha256'].items():
             if full.sha(root/name)!=value:raise ValueError('Prepared input/config changed: '+name)
         transfer_gate(root,route,decision_path)
