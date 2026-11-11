@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from scipy import sparse
 from . import certified, f1
+from . import original_solver
 from .f1_config import validate_f1_config
 from . import research_config
 from .verify import verify_query,read_rows,WORK_COUNTERS
@@ -37,6 +38,7 @@ def dump(path,value):
 def configure(path):
     global CFG,OUT,QN,GN,WORKERS,BUDGET,WORKER_AS,CONFIG_PATH
     CONFIG_PATH=str(Path(path).resolve());CFG=json.loads(Path(path).read_text())
+    original_solver.binding(CFG)
     # Unbound preparation artifacts must stop before data/resource access.
     validate_f1_config(CFG,require_bound=True)
     research_config.validate(CFG,require_bound=True,require_enabled=True)
@@ -72,6 +74,8 @@ def check_admission_manifest(cfg,manifest):
     # Also required when final acceptance reuses earlier inline read-backs.
     assert admission_binding(cfg)==admission_binding(manifest['config']),'Admission binding differs from computed run'
     assert fitting_binding(cfg)==fitting_binding(manifest['config']),'Fitting binding differs from computed run'
+    if original_solver.binding(cfg):
+        assert manifest['solver_id']==configured_solver_id(cfg),'Saved original solver differs'
     if cfg['source'] in research_config.SOURCES:
         assert manifest['solver_id']==solver_id(cfg['source']),'Saved solver implementation differs'
         assert manifest['config']['commit']==cfg['commit'],'Saved execution commit differs'
@@ -81,6 +85,7 @@ def check_admission_manifest(cfg,manifest):
 
 def fitting_binding(cfg):
     binding=validate_f1_config(cfg,require_bound=True)
+    binding.update(original_solver.binding(cfg))
     binding.update(research_config.validate(cfg,require_bound=True))
     if cfg['source'] in research_config.SOURCES:
         binding['research_solver_id']=modern_solver(cfg['source']).SOLVER_ID
@@ -106,6 +111,9 @@ def solver_id(source):
         return SOLVER_ID
     if source in research_config.SOURCES:return modern_solver(source).SOLVER_ID
     return f1.SOLVER_ID if source in f1.SOURCES else certified.SOLVER_ID
+
+def configured_solver_id(cfg):
+    return original_solver.SOLVER_ID if original_solver.binding(cfg) else solver_id(cfg['source'])
 
 def install_solver(cfg):
     if cfg['source'] in research_config.SOURCES:
@@ -207,7 +215,8 @@ def initialize_worker(stage,config_path):
         elif stage=='compute':
             install_solver(CFG)
             ENGINE=model.FullIHyRDP(GRAPH,FULL,alpha=CFG['alpha'],beta=CFG['beta'],step=5,
-                admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS)
+                admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,
+                stage_solver=original_solver.WarmOriginalSolver() if original_solver.binding(CFG) else None)
         if inline_readback() and READBACK_SUMS is None:
             READBACK_SUMS=np.asarray(FULL.sum(axis=1,dtype=np.float64))
     except BaseException:INIT_ERROR=traceback.format_exc()
@@ -217,12 +226,14 @@ def compute_query(query):
         if INIT_ERROR:raise RuntimeError(INIT_ERROR)
         binding=admission_binding(CFG)
         if binding:assert ENGINE.admission_policy==binding['admission_policy']
-        start=time.monotonic();certified.EVENTS.clear();seen=0;linear_systems=0;mm_iterations=0;linear_solve_calls=0;refinement_solve_calls=0;first_state=None
+        start=time.monotonic();saving_seconds=0.;certified.EVENTS.clear();seen=0;linear_systems=0;mm_iterations=0;linear_solve_calls=0;refinement_solve_calls=0;first_state=None
         work_counts=dict.fromkeys(WORK_COUNTERS,0)
         similarity=X@X[query];dest=OUT/'queries';trace=dest/f'{query:04d}.trace.jsonl.gz'
+        save_start=time.monotonic()
         with gzip.open(trace,'wt',encoding='utf-8',compresslevel=6) as stream:
+            saving_seconds+=time.monotonic()-save_start
             def capture(t):
-                nonlocal seen,linear_systems,mm_iterations,linear_solve_calls,refinement_solve_calls,first_state
+                nonlocal seen,linear_systems,mm_iterations,linear_solve_calls,refinement_solve_calls,first_state,saving_seconds
                 event=None
                 nominated=t['nominated'] if binding else t['selected']
                 if t['scores'] is not None:
@@ -237,6 +248,7 @@ def compute_query(query):
                 else:
                     assert len(certified.EVENTS)==seen
                     assert t['unlabeled'][:CFG['depth']-len(t['labeled'])]==nominated
+                save_start=time.monotonic()
                 row={k:t[k] for k in ['iteration','labeled','direct','indirect','unlabeled','selected','bridges','residual']}
                 if binding:
                     assert t['admission_policy']==binding['admission_policy'] and t['admission_version']==binding['admission_version']
@@ -245,7 +257,10 @@ def compute_query(query):
                 row['event']=event
                 if t['iteration']==0:first_state=row
                 stream.write(json.dumps(row,separators=(',',':'),allow_nan=False)+'\n');stream.flush()
+                saving_seconds+=time.monotonic()-save_start
             prefix,diag=ENGINE.rank([query],nq=CFG['depth'],input_similarity=similarity,numerical_tail=False,trace=capture)
+            save_start=time.monotonic()
+        saving_seconds+=time.monotonic()-save_start
         assert diag['status']=='complete_diffusion' and diag['numerical_tail_count']==0 and len(prefix)==CFG['depth']
         assert diag['max_relative_residual']<=1e-8
         diag['linear_systems']=linear_systems
@@ -254,6 +269,7 @@ def compute_query(query):
         diag['linear_solve_calls']=linear_solve_calls
         diag['refinement_solve_calls']=refinement_solve_calls
         rank=complete_gallery(prefix,similarity,QN)
+        save_start=time.monotonic()
         pp=dest/f'{query:04d}.prefix.npy';rp=dest/f'{query:04d}.rankings.npy'
         np.save(pp,prefix.astype(np.int32));np.save(rp,rank)
         row=dict(query=query,source=CFG['source'],signature=SIG,diagnostics=diag,seconds=time.monotonic()-start,
@@ -267,11 +283,14 @@ def compute_query(query):
             with gzip.open(first_path,'wt',encoding='utf-8') as stream:
                 stream.write(json.dumps(first_state,separators=(',',':'),allow_nan=False)+'\n')
             row['initial_state_sha256']=sha(first_path)
+        saving_seconds+=time.monotonic()-save_start
+        pre_readback_seconds=time.monotonic()-start
+        row.update(seconds=pre_readback_seconds,saving_seconds=saving_seconds,compute_seconds=pre_readback_seconds-saving_seconds,
+                   timing_scope='compute includes online certification; saving includes trace packing/compression, arrays and hashes; final metadata writes excluded')
         dump(dest/f'{query:04d}.json',row)
         if inline_readback():
             before=time.monotonic();accepted=accept_query(query)
             if 'error' in accepted:raise RuntimeError('Saved-score read-back failed: '+accepted['error'])
-            row['compute_seconds']=row['seconds']
             row['readback_seconds']=time.monotonic()-before
             row['readback_sha256']=sha(OUT/'accepted'/f'{query:04d}.json')
             row['trace_retained']=query in CFG['retained_queries']
@@ -397,7 +416,7 @@ def main(stage,config_path):
             scientific.update({k:CFG[k] for k in ('relation_model','rho','support_lambda','support_mode')})
             scientific['support_sha256']=CFG['input_sha256'][CFG['support_file']]
         signature=hashlib.sha256(json.dumps(scientific,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=solver_id(CFG['source'])))
+        dump(OUT/'run-manifest.json',dict(signature=signature,config=CFG,time=now(),resources=initial,static_total_bytes=static_total,shared_mapping_bytes=shared,solver_id=configured_solver_id(CFG)))
         seconds=pool_stage(stage)
         assert len(list((OUT/'queries').glob('*.json')))==QN
         metric=evaluate();sources()

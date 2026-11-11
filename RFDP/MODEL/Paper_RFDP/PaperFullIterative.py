@@ -163,6 +163,9 @@ class FullIHyRDP:
             raise ValueError('Invalid requested rank length')
         if numerical_tail and input_similarity is None:
             raise ValueError('Numerical tail requires the explicit original input metric')
+        reset_solver = getattr(self.stage_solver, 'reset', None)
+        if reset_solver is not None:
+            reset_solver()
         labeled = seeds.copy()
         mask = np.zeros(self.n, dtype=bool)
         mask[seeds] = True
