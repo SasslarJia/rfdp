@@ -42,6 +42,9 @@ def configure(path):
     # Unbound preparation artifacts must stop before data/resource access.
     validate_f1_config(CFG,require_bound=True)
     research_config.validate(CFG,require_bound=True,require_enabled=True)
+    if 'adaptation_schema' in CFG:
+        from experiments.reid_adaptation.protocol import validate
+        validate(CFG,require_bound=True)
     if 'relation_schema' in CFG:
         from experiments.relation_routes.protocol import validate
         validate(CFG,require_bound=True)
@@ -74,6 +77,9 @@ def check_admission_manifest(cfg,manifest):
     # Also required when final acceptance reuses earlier inline read-backs.
     assert admission_binding(cfg)==admission_binding(manifest['config']),'Admission binding differs from computed run'
     assert fitting_binding(cfg)==fitting_binding(manifest['config']),'Fitting binding differs from computed run'
+    if 'adaptation_schema' in cfg:
+        assert cfg==manifest['config'],'Bound adaptation configuration differs'
+        assert manifest['solver_id']==configured_solver_id(cfg),'Adaptation solver differs'
     if original_solver.binding(cfg):
         assert manifest['solver_id']==configured_solver_id(cfg),'Saved original solver differs'
     if cfg['source'] in research_config.SOURCES:
@@ -87,6 +93,9 @@ def fitting_binding(cfg):
     binding=validate_f1_config(cfg,require_bound=True)
     binding.update(original_solver.binding(cfg))
     binding.update(research_config.validate(cfg,require_bound=True))
+    if 'adaptation_schema' in cfg:
+        from experiments.reid_adaptation.protocol import validate
+        binding.update(validate(cfg,require_bound=True))
     if cfg['source'] in research_config.SOURCES:
         binding['research_solver_id']=modern_solver(cfg['source']).SOLVER_ID
     if cfg['source'] in f1.SOURCES:
@@ -113,6 +122,9 @@ def solver_id(source):
     return f1.SOLVER_ID if source in f1.SOURCES else certified.SOLVER_ID
 
 def configured_solver_id(cfg):
+    if 'adaptation_schema' in cfg:
+        from experiments.reid_adaptation.runtime import SOLVER_ID
+        return SOLVER_ID
     return original_solver.SOLVER_ID if original_solver.binding(cfg) else solver_id(cfg['source'])
 
 def install_solver(cfg):
@@ -153,6 +165,9 @@ def sources():
     for p,h in CFG['input_sha256'].items():assert sha(p)==h,p
 
 def resources(reserve=False):
+    if 'adaptation_schema' in CFG:
+        from experiments.reid_adaptation.resources import snapshot
+        return snapshot(CFG,reserve=reserve)
     if 'relation_schema' in CFG:
         from experiments.relation_routes.full_run import resource_snapshot
         return resource_snapshot(CFG,reserve=reserve)
@@ -195,7 +210,10 @@ def initialize_worker(stage,config_path):
         STAGE_CERTIFIER=None
         ADMISSION_CAMERAS=load_admission_cameras(CFG,QN+GN)
         from MODEL.Paper_RFDP import PaperFullIterative as model
-        if 'relation_schema' in CFG:
+        if 'adaptation_schema' in CFG:
+            from experiments.reid_adaptation.runtime import initialize
+            ENGINE,GRAPH,READBACK_KERNEL,READBACK_SUMS,STAGE_CERTIFIER=initialize(CFG,GRAPH,FULL,stage=='compute')
+        elif 'relation_schema' in CFG:
             from experiments.relation_routes.runtime import initialize
             ENGINE,GRAPH,READBACK_KERNEL,READBACK_SUMS,STAGE_CERTIFIER=initialize(CFG,GRAPH,FULL,stage=='compute')
         elif CFG.get('relation_model','original')=='csw':
@@ -243,13 +261,16 @@ def compute_query(query):
                     linear_solve_calls+=event.get('linear_solve_calls',event.get('cg_calls',0)+event.get('direct_calls',0)+len(event.get('refinements',[])))
                     refinement_solve_calls+=event.get('refinement_solve_calls',len(event.get('refinements',[])))
                     for key in WORK_COUNTERS:work_counts[key]+=event.get(key,0)
-                    expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:CFG['depth']-len(t['labeled'])].tolist()
+                    current_step=t.get('promotion_step',CFG.get('step',5))
+                    expected=np.asarray(t['unlabeled'])[event['returned_prefix_local']][:current_step][:CFG['depth']-len(t['labeled'])].tolist()
                     assert expected==nominated
                 else:
                     assert len(certified.EVENTS)==seen
                     assert t['unlabeled'][:CFG['depth']-len(t['labeled'])]==nominated
                 save_start=time.monotonic()
                 row={k:t[k] for k in ['iteration','labeled','direct','indirect','unlabeled','selected','bridges','residual']}
+                if 'adaptation_schema' in CFG:
+                    row.update(promotion_step=t['promotion_step'],promotion_schedule=t['promotion_schedule'])
                 if binding:
                     assert t['admission_policy']==binding['admission_policy'] and t['admission_version']==binding['admission_version']
                     row.update({k:t[k] for k in ['nominated','support_camera_counts','admission_policy','admission_version']})
@@ -314,7 +335,7 @@ def accept_query(query):
             first=dest/f'{query:04d}.initial.jsonl.gz'
             assert sha(first)==row['initial_state_sha256']
             assert list(read_rows(first))==[next(read_rows(dest/f'{query:04d}.trace.jsonl.gz'))]
-        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1),stage_certifier=STAGE_CERTIFIER)
+        result=verify_query(GRAPH,FULL,X@X[query],query,np.load(dest/f'{query:04d}.prefix.npy'),np.load(dest/f'{query:04d}.rankings.npy'),read_rows(dest/f'{query:04d}.trace.jsonl.gz'),CFG['source'],QN,CFG['depth'],kernel=READBACK_KERNEL,full_sums=READBACK_SUMS,alpha=CFG['alpha'],beta=CFG['beta'],admission_policy=CFG.get('admission_policy','original'),camera_ids=ADMISSION_CAMERAS,admission_version=CFG.get('admission_version'),f1_nu=CFG.get('f1_nu',1.5),f1_updates=CFG.get('f1_updates',1),stage_certifier=STAGE_CERTIFIER,promotion_schedule=CFG.get('promotion_schedule','fixed5'))
         for k in ['solver_calls','iterations','bridge_events','bridge_edges','max_unlabeled']:assert result[k]==row['diagnostics'][k]
         assert result['max_reported_residual']==row['diagnostics']['max_relative_residual']
         if 'linear_systems' in row['diagnostics']:
@@ -325,32 +346,36 @@ def accept_query(query):
         result.update(query=query,signature=SIG,trace_sha256=row['trace_sha256'],**binding);dump(OUT/'accepted'/f'{query:04d}.json',result);return result
     except BaseException:return dict(query=query,error=traceback.format_exc())
 
-def aggregate_inline_readback():
+def aggregate_inline_readback(*, configuration=None, output=None, remove_duplicates=True):
     """Bind every earlier full read-back to the final complete rankings."""
-    start=time.monotonic();complete=json.loads((OUT/'COMPUTE_COMPLETE.json').read_text())
-    assert sha(OUT/'rankings.npy')==complete['rankings_sha256']
-    ranks=np.load(OUT/'rankings.npy',mmap_mode='r')
-    assert ranks.shape==(QN,GN)
-    assert len(list((OUT/'accepted').glob('*.json')))==QN
-    assert len(list((OUT/'queries').glob('*.trace.jsonl.gz')))==len(CFG['retained_queries'])
-    for query in range(QN):
-        dest=OUT/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
-        accepted=OUT/'accepted'/f'{query:04d}.json'
+    cfg=CFG if configuration is None else configuration
+    out=OUT if output is None else Path(output)
+    nq,ng=(QN,GN) if configuration is None else (cfg['queries'],cfg['gallery'])
+    start=time.monotonic();complete=json.loads((out/'COMPUTE_COMPLETE.json').read_text())
+    assert sha(out/'rankings.npy')==complete['rankings_sha256']
+    ranks=np.load(out/'rankings.npy',mmap_mode='r')
+    assert ranks.shape==(nq,ng)
+    assert len(list((out/'accepted').glob('*.json')))==nq
+    assert len(list((out/'queries').glob('*.trace.jsonl.gz')))==len(cfg['retained_queries'])
+    for query in range(nq):
+        dest=out/'queries';row=json.loads((dest/f'{query:04d}.json').read_text())
+        accepted=out/'accepted'/f'{query:04d}.json'
         assert sha(accepted)==row['readback_sha256']
         result=json.loads(accepted.read_text())
         assert result['query']==query and result['signature']==complete['signature']==row['signature']
         assert result['trace_sha256']==row['trace_sha256']
-        if CFG.get('retain_initial_state'):
+        if cfg.get('retain_initial_state'):
             assert result['initial_state_sha256']==row['initial_state_sha256']==sha(dest/f'{query:04d}.initial.jsonl.gz')
         assert sha(dest/f'{query:04d}.prefix.npy')==row['prefix_sha256']
         packed=io.BytesIO();np.save(packed,ranks[query])
         assert hashlib.sha256(packed.getvalue()).hexdigest()==row['rankings_sha256']
-        assert row['trace_retained']==(query in CFG['retained_queries'])
+        assert row['trace_retained']==(query in cfg['retained_queries'])
         trace=dest/f'{query:04d}.trace.jsonl.gz'
         if row['trace_retained']:assert sha(trace)==row['trace_sha256']
         else:assert not trace.exists()
     # Each row is now checked against the combined array; remove only duplicates.
-    for query in range(QN):(OUT/'queries'/f'{query:04d}.rankings.npy').unlink(missing_ok=True)
+    if remove_duplicates:
+        for query in range(nq):(out/'queries'/f'{query:04d}.rankings.npy').unlink(missing_ok=True)
     return time.monotonic()-start
 
 def pool_stage(stage,queries=None,initial_completed=0):
@@ -371,7 +396,11 @@ def pool_stage(stage,queries=None,initial_completed=0):
     return time.monotonic()-start
 
 def evaluate():
-    data,nq,ng=load_features(Path(CFG['mat']));assert (nq,ng)==(QN,GN)
+    if 'adaptation_schema' in CFG:
+        from experiments.reid_adaptation.io import load_labels
+        data=load_labels(CFG['labels_file'],QN,GN)
+    else:
+        data,nq,ng=load_features(Path(CFG['mat']));assert (nq,ng)==(QN,GN)
     ranks=np.stack([np.load(OUT/'queries'/f'{q:04d}.rankings.npy') for q in range(QN)])
     metric=evaluate_reid_rankings(ranks,range(QN),*[data[k] for k in ['query_label','query_cam','gallery_label','gallery_cam']],QN,max_rank=500,return_per_query=True)
     qp,qc,gp,gc=[np.asarray(data[k]).ravel() for k in ['query_label','query_cam','gallery_label','gallery_cam']];aps=[];r1=[];inps=[]
@@ -388,7 +417,10 @@ def evaluate():
     return dict(mAP=float(np.mean(aps)),rank1=float(np.mean(r1)),mINP=float(np.mean(inps)),valid_queries=len(aps))
 
 def main(stage,config_path):
-    configure(config_path);sources()
+    configure(config_path)
+    if 'adaptation_schema' in CFG:
+        raise ValueError('Use experiments.reid_adaptation.full_run for the bound WSL protocol')
+    sources()
     binding=admission_binding(CFG);fit_binding=fitting_binding(CFG)
     if stage=='acceptance':check_admission_manifest(CFG,json.loads((OUT/'run-manifest.json').read_text()))
     assert CFG['source'] in ('original','continuous','boundary_odds','two_step_fitting','stationary_measure')+f1.SOURCES+research_config.SOURCES

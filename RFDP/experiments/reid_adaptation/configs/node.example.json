@@ -1,0 +1,28 @@
+{
+  "profile": "wsl2-cpu",
+  "workspace": "/home/USER/project/ihyrdp",
+  "archive_root": "/mnt/d/IHyRDP",
+  "cpu_workers_cap": 12,
+  "host_storage_roots": [
+    "/mnt/c",
+    "/mnt/d"
+  ],
+  "inputs": {
+    "market-osnet": {
+      "cache": "/home/USER/project/ihyrdp/inputs/market-osnet",
+      "label_manifest": "/home/USER/project/ihyrdp/inputs/labels/market-image-manifest.json"
+    },
+    "market-transreid": {
+      "cache": "/home/USER/project/ihyrdp/inputs/market-transreid",
+      "label_manifest": "/home/USER/project/ihyrdp/inputs/labels/market-image-manifest.json"
+    },
+    "duke-osnet": {
+      "cache": "/home/USER/project/ihyrdp/inputs/duke-osnet",
+      "label_manifest": "/home/USER/project/ihyrdp/inputs/labels/duke-image-manifest.json"
+    },
+    "duke-transreid": {
+      "cache": "/home/USER/project/ihyrdp/inputs/duke-transreid",
+      "label_manifest": "/home/USER/project/ihyrdp/inputs/labels/duke-image-manifest.json"
+    }
+  }
+}

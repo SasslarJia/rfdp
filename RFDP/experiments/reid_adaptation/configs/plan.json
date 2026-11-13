@@ -1,0 +1,79 @@
+{
+  "schema": "reid-adaptation-v1",
+  "first_stage_count": 8,
+  "conditional_combination_max": 4,
+  "conditional_late5_max": 1,
+  "maximum_full_runs": 13,
+  "early5_osnet": "reuse archived complete results",
+  "runs": [
+    {
+      "recipe": "p1_graph--market-transreid.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_graph--duke-transreid.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_graph--market-osnet.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_graph--duke-osnet.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "early5--market-transreid.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "early5--duke-transreid.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "camera_boundary--duke-osnet.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "camera_boundary--market-osnet.json",
+      "phase": "first_stage",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_early5--market-osnet.json",
+      "phase": "conditional",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_early5--market-transreid.json",
+      "phase": "conditional",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_early5--duke-osnet.json",
+      "phase": "conditional",
+      "auto_start": false
+    },
+    {
+      "recipe": "p1_early5--duke-transreid.json",
+      "phase": "conditional",
+      "auto_start": false
+    }
+  ],
+  "late5": {
+    "input_id": null,
+    "window_new_nodes": [
+      101,
+      105
+    ],
+    "requires_decision": true
+  },
+  "auto_start": false
+}

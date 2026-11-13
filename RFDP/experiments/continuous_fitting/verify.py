@@ -29,8 +29,11 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None,score_decoder=None):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None,score_decoder=None,promotion_schedule='fixed5'):
     from . import f1, research_config
+    from experiments.reid_adaptation.schedule import promotion_step
+    promotion_step(promotion_schedule,0)
+    if promotion_schedule!='fixed5':assert admission_policy=='original' and source=='original'
     if source in research_config.SOURCES:
         assert admission_policy=='original' and kernel is None
     if source in f1.SOURCES:
@@ -53,6 +56,9 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
     for t in rows:
         check();assert len(labeled)<depth and t['iteration']==batches
         assert t['labeled']==labeled
+        current_step=promotion_step(promotion_schedule,len(labeled)-1)
+        if promotion_schedule!='fixed5' or 'promotion_schedule' in t or 'promotion_step' in t:
+            assert t['promotion_schedule']==promotion_schedule and t['promotion_step']==current_step
         expected_bridges=[]
         if len(labeled)==int(sizes[list(active)].sum()) and len(labeled)<n:
             expected_bridges=bridge_edges(graph,full,labels,active,sums,kernel)
@@ -73,7 +79,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
         assert t['unlabeled']==u.tolist()
         residual=float(t['residual']);assert np.isfinite(residual) and 0<=residual<=1e-8
         reported=max(reported,residual)
-        if len(u)<=5:
+        if len(u)<=current_step:
             assert t['returned_scores'] is None and t['event'] is None and residual==0
             nominated=u[:depth-len(labeled)].tolist();no_solve+=1
         else:
@@ -107,7 +113,7 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             for key in WORK_COUNTERS:
                 value=ev.get(key,0);assert type(value) is int and value>=0
                 work_counts[key]+=value
-            nominated=u[c['prefix']][:depth-len(labeled)].tolist()
+            nominated=u[c['prefix']][:min(current_step,depth-len(labeled))].tolist()
             assert c['prefix']==ev['returned_prefix_local']
             maximum=max(maximum,c['relative']);calls+=1
         selected=nominated

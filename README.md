@@ -10,6 +10,7 @@
 | `RFDP/experiments/reliability/` | CSW 实现与相关工具 |
 | `RFDP/experiments/seed_support/` | 原有轨迹的只读来源支持与首批诊断，不产生新检索结果 |
 | `RFDP/experiments/continuous_fitting/` | 多种二次目标共用的求解、执行、读回和诊断代码 |
+| `RFDP/experiments/reid_adaptation/` | P1构图、early5接纳及相机边界拟合的固定配置与CPU完整入口 |
 | `RFDP/experiments/stationary_measure/` | 度加权方法的辅助工具 |
 | `RFDP/experiments/internal_nonlinear/` | 非线性实现与共用配对分析模块 |
 | `RFDP/Test_RFDP/` | 正确性测试 |
@@ -70,3 +71,33 @@ python RFDP/experiments/internal_nonlinear/prepare_deployment.py \
 ```
 
 `--materials-root` 内沿用 `RFDP/experiments/internal_nonlinear/model/` 相对结构。导出器保留冻结源码核对，只生成部署目录，不启动实验。外部方法的源码版本/下载校验清单属于可执行依赖，随代码维护。
+
+## ReID adaptation CPU entry
+
+`RFDP/experiments/reid_adaptation/configs/` contains fixed, unbound recipes.
+`plan.json` lists eight first-stage units and disabled conditional combinations.
+`node.example.json` is a path template, not a deployed machine record.
+
+Use a clean Linux checkout and a Linux Python 3.12 environment:
+
+```bash
+python -m pip install -r RFDP/experiments/reid_adaptation/requirements-cpu.txt
+PYTHONPATH=RFDP python -m experiments.reid_adaptation.full_run prepare \
+  --recipe RFDP/experiments/reid_adaptation/configs/p1_graph--market-transreid.json \
+  --node /path/to/bound-node.json
+PYTHONPATH=RFDP python -m experiments.reid_adaptation.full_run run \
+  --config /path/to/workspace/configs/p1_graph--market-transreid.json
+```
+
+`prepare` verifies frozen input hashes, builds a complete P1 affinity/graph pair
+when needed, and binds metadata, resources and the execution commit. It does
+not run queries. `run` executes one complete official input; it never queues
+other recipes. Conditional units require `--decision` with complete predecessor
+evidence. `--resume` reuses only accepted query transactions.
+
+The WSL profile uses up to 12 processes with one BLAS thread each, native Linux
+storage for active files, and C/D backing-volume guards. `collect --config ...
+--output ...` exports small accepted evidence. `archive --config ...` writes and
+verifies the complete run on the configured D drive without deleting sources.
+The Linux checkout, environment and frozen inputs must be staged separately;
+macOS environments cannot be copied to Linux.

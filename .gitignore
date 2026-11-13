@@ -45,3 +45,6 @@ data/
 !RFDP/experiments/full_reid/upstream_sources.json
 !RFDP/experiments/full_reid/research/classic/upstream_metadata.json
 !/configs/*.example.json
+
+# Fixed scientific recipes and a secret-free execution-node template.
+!RFDP/experiments/reid_adaptation/configs/*.json
