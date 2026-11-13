@@ -95,6 +95,17 @@ class AdaptationProtocolTests(unittest.TestCase):
         with patch.object(resources,'memory_allocation',return_value=dict(current=71,cap=100)):
             with self.assertRaises(RuntimeError):full_run.graph_memory_guard()
 
+    def test_p1_source_only_needs_identical_frozen_features(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache=Path(tmp);(cache/'features.npy').write_bytes(b'frozen-input')
+            cfg=protocol.recipe('p1_graph','market-transreid')
+            cfg['expected_cache_input_hashes']['features.npy']=full.sha(cache/'features.npy')
+            full_run.verify_source_cache(cache,cfg)
+            cfg['k']=20
+            with self.assertRaises(FileNotFoundError):full_run.verify_source_cache(cache,cfg)
+            cfg['k']=30;(cache/'features.npy').write_bytes(b'changed-input')
+            with self.assertRaises(ValueError):full_run.verify_source_cache(cache,cfg)
+
 
 class AdaptationFullIOTests(unittest.TestCase):
     def test_real_capture_readback_and_evaluation_on_synthetic_graph(self):

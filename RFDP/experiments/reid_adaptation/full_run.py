@@ -70,6 +70,14 @@ def check_bound_inputs(cfg):
         raise ValueError('Camera IDs differ from fixed image order')
 
 
+def verify_source_cache(cache,cfg):
+    """P1 derives new A/G from frozen Z; it must not require unused k20 A/G."""
+    required=('features.npy',) if cfg['k']==30 else ('features.npy','affinity.npy','graph.npz')
+    for name in required:
+        if full.sha(cache/name)!=cfg['expected_cache_input_hashes'][name]:
+            raise ValueError('Frozen source cache differs: '+name)
+
+
 def graph_storage_guard(node,n,feature_bytes):
     # Full A + temporary D + worst-case dense CSR, including ties; no truncation.
     required=20*n*n+feature_bytes+2*2**30
@@ -106,9 +114,8 @@ def prepare(recipe_path,node_path):
     with lock(workspace/'.execution.lock'):
         head=checkout(full.REPO);source=node['inputs'][cfg['input_id']]
         cache=resources.native_path(source['cache']);label=Path(source['label_manifest']).resolve()
-        # Verify before graph construction. These are already extracted frozen Z/A/G.
-        for name,h in cfg['expected_cache_input_hashes'].items():
-            if full.sha(cache/name)!=h:raise ValueError('Frozen cache differs: '+name)
+        # P1 consumes frozen Z; k20 routes consume the complete frozen Z/A/G.
+        verify_source_cache(cache,cfg)
         if full.sha(label)!=cfg['expected_label_sha256']:raise ValueError('Official label order differs')
         labels=labels_from_manifest(label,cfg['queries'],cfg['gallery'])
         x=np.load(cache/'features.npy',mmap_mode='r',allow_pickle=False)
