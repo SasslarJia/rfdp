@@ -48,22 +48,31 @@ def down(x): return np.nextafter(x, -np.inf)
 def up(x): return np.nextafter(x, np.inf)
 
 
-def fast_certificate(w, e, alpha, beta, scores, source):
+def fast_certificate(w, e, alpha, beta, scores, source, *, wide=False):
     """Outward elementary operations on exact binary W/e and actual scores."""
+    dtype = np.longdouble if wide else np.float64
+    if wide:
+        # Extended arithmetic is optional (x86 WSL has it; Apple ARM does not).
+        # This fast path certifies only exactly binary64 returned points. MP
+        # points retain the existing arbitrary-precision certificate.
+        if np.finfo(dtype).nmant <= np.finfo(np.float64).nmant:
+            return None
+        if any(mp.mpf(float(v)) != v for v in scores):
+            return None
     with np.errstate(all='ignore'):
-        x = np.asarray([float(v) for v in scores])
+        x = np.asarray([float(v) for v in scores], dtype=dtype)
         if not np.isfinite(x).all() or np.any(x <= 0): return None
         xl, xu = down(x), up(x)
         start, end = w.indptr[:-1], w.indptr[1:]
         width = int(np.max(end-start)); rows = np.arange(len(e))
-        hl = np.zeros(len(e)); hu = hl.copy()
+        hl = np.zeros(len(e), dtype=dtype); hu = hl.copy()
         for offset in range(width):
             active = start+offset < end; i = rows[active]; k = start[active]+offset
             hl[i] = down(hl[i]+w.data[k]); hu[i] = up(hu[i]+w.data[k])
         if np.any(hl <= 0) or not np.isfinite(hu).all(): return None
         rl, ru = down(np.sqrt(hl)), up(np.sqrt(hu))
         zl, zu = (xl, xu) if source=='stationary_measure' else (down(xl/ru), up(xu/rl))
-        ll = np.zeros(len(e)); lu = ll.copy()
+        ll = np.zeros(len(e), dtype=dtype); lu = ll.copy()
         for offset in range(width):
             active = start+offset < end; i = rows[active]; k = start[active]+offset
             j = w.indices[k]; weight = w.data[k]; mask = i != j
@@ -79,7 +88,7 @@ def fast_certificate(w, e, alpha, beta, scores, source):
             pl = np.maximum(0., down(e/up(hu+e)))
             pu = np.minimum(1., up(e/down(hl+e)))
             pl[e == 0] = 0.; pu[e == 0] = 0.
-            sl = np.zeros(len(e)); su = sl.copy()
+            sl = np.zeros(len(e), dtype=dtype); su = sl.copy()
             for offset in range(width):
                 active = (start+offset < end) & (e == 0)
                 i = rows[active]; k = start[active]+offset; j = w.indices[k]
@@ -108,11 +117,15 @@ def fast_certificate(w, e, alpha, beta, scores, source):
         if np.any(bl <= 0): return None
         error = np.maximum(np.abs(down(bl-au)), np.abs(up(bu-al)))
         eta = float(np.max(up(error/bl)))
+        if wide:
+            # Casting the extended upper bound must not round it down.
+            eta = float(up(np.float64(eta)))
         if not np.isfinite(eta) or not 0 <= eta <= TOL: return None
         lower, upper = down(xl/up(1.+eta)), up(xu/down(1.-eta))
         if np.any(lower <= 0) or not np.isfinite(upper).all(): return None
         return dict(accepted=True, relative=eta, eta=eta,
-                    intervals=list(zip(lower, upper)), backend='outward-float64', dps=0)
+                    intervals=list(zip(lower, upper)),
+                    backend='outward-longdouble' if wide else 'outward-float64', dps=0)
 
 
 class Block(original.Block):
@@ -213,6 +226,10 @@ def certify_saved(w, e, values, alpha=5., beta=25., source='continuous'):
     if source not in ('original', 'continuous', 'boundary_odds', 'two_step_fitting','stationary_measure') or len(values) != len(e):
         raise ValueError('Invalid source or score count')
     cert = fast_certificate(w, e, alpha, beta, values, source)
+    checked = None if cert is None else check_order(w, e, values, cert)
+    if checked is not None:
+        return dict(prefix=checked[0][:5], relative=float(cert['relative']), dps=0, backend=cert['backend'])
+    cert = fast_certificate(w, e, alpha, beta, values, source, wide=True)
     checked = None if cert is None else check_order(w, e, values, cert)
     if checked is not None:
         return dict(prefix=checked[0][:5], relative=float(cert['relative']), dps=0, backend=cert['backend'])
