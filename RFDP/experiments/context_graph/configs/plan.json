@@ -1,0 +1,57 @@
+{
+  "schema": "context-graph-v1",
+  "initial_full_runs": 2,
+  "conditional_transfer": 3,
+  "conditional_combinations": 4,
+  "maximum_full_runs": 9,
+  "parameter_search": false,
+  "extra_kappa_points": false,
+  "auto_start": false,
+  "runs": [
+    {
+      "recipe": "context_graph--duke-osnet.json",
+      "phase": "main",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph_permuted--duke-osnet.json",
+      "phase": "control",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph--market-osnet.json",
+      "phase": "transfer",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph--market-transreid.json",
+      "phase": "transfer",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph--duke-transreid.json",
+      "phase": "transfer",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph_early5--duke-osnet.json",
+      "phase": "combination",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph_early5--market-osnet.json",
+      "phase": "combination",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph_early5--market-transreid.json",
+      "phase": "combination",
+      "auto_start": false
+    },
+    {
+      "recipe": "context_graph_early5--duke-transreid.json",
+      "phase": "combination",
+      "auto_start": false
+    }
+  ]
+}

@@ -59,6 +59,9 @@ def recipe(route, input_id, *, conditional=False):
 
 
 def validate(cfg, require_bound=False):
+    if cfg.get('adaptation_schema') == 'context-graph-v1':
+        from experiments.context_graph.protocol import validate as validate_context
+        return validate_context(cfg, require_bound=require_bound)
     if cfg.get('adaptation_schema') != SCHEMA:
         raise ValueError('Explicit adaptation schema required')
     expected=recipe(cfg.get('adaptation_route'),cfg.get('input_id'))
