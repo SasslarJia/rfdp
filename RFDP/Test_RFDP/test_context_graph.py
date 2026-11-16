@@ -101,16 +101,25 @@ class ContextGraphTests(unittest.TestCase):
                 self.assertEqual(original_protocol.validate(cfg),protocol.validate(cfg))
                 self.assertEqual(cfg['queries'],3368 if cfg['input_id'].startswith('market') else 2228)
             cfg=protocol.recipe('context_graph','duke-osnet')
-            for key,value in [('alpha',6),('boundary_rho',.5),('support_lambda',.25),('k',30),('context_bridges','weighted')]:
+            for key,value in [('alpha',6),('boundary_rho',.5),('support_lambda',.25),('k',30),('context_bridges','weighted'),('numerical_solver','unverified')]:
                 changed=copy.deepcopy(cfg);changed[key]=value
                 with self.assertRaises(ValueError):original_protocol.validate(changed)
             with self.assertRaises(ValueError):protocol.recipe('context_graph_permuted','market-osnet')
+            legacy=copy.deepcopy(cfg);legacy.pop('numerical_solver')
+            self.assertNotIn('numerical_solver',protocol.validate(legacy))
+            self.assertEqual(protocol.validate(cfg)['numerical_solver'],'stable_lu_certified')
             control=protocol.recipe('context_graph_permuted','duke-osnet')
             with self.assertRaises(ValueError):check_decision(control,None)
             p=Path(tmp)/'decision.json';p.write_text(json.dumps(dict(schema=protocol.SCHEMA,verdict='continue_fixed_control',rationale='test',allowed_units=['context_graph_permuted--duke-osnet'],evidence=[])))
             with self.assertRaises(ValueError):check_decision(control,p)
 
     def test_original_equation_and_full_readback_use_actual_new_graph(self):
+        self.check_numerical_route('warm_certified')
+
+    def test_stable_route_complete_readback_and_old_config_compatibility(self):
+        self.check_numerical_route('stable_lu_certified')
+
+    def check_numerical_route(self,numerical_solver):
         from Test_RFDP.test_adaptation_runtime import AdaptationRuntimeTests
         from MODEL.Paper_RFDP.PaperFullIterative import FullIHyRDP
         from experiments.continuous_fitting.original_solver import WarmOriginalSolver
@@ -119,7 +128,7 @@ class ContextGraphTests(unittest.TestCase):
             old,affinity,_,path=helper.fixture()
             main,_=graph.calibrate(old);placebo,_=graph.permute_weights(old,main)
             for route,g,schedule in [('context_graph',main,'fixed5'),('context_graph_permuted',placebo,'fixed5'),('context_graph_early5',main,'early5')]:
-                cfg=helper.config('p1_graph',path);cfg.update(adaptation_route=route,promotion_schedule=schedule)
+                cfg=helper.config('p1_graph',path);cfg.update(adaptation_route=route,promotion_schedule=schedule,numerical_solver=numerical_solver)
                 engine,returned,kernel,sums,_=runtime.initialize(cfg,g,affinity)
                 np.testing.assert_array_equal(returned.toarray(),g.toarray());self.assertIsNone(kernel)
                 np.testing.assert_array_equal(sums,affinity.sum(axis=1,dtype=np.float64))

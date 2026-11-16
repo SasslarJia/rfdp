@@ -21,7 +21,7 @@ def recipe(route,input_id):
     frozen=INPUTS[input_id];permuted=route=='context_graph_permuted'
     phase=('main' if (route,input_id)==UNITS[0] else 'control' if permuted else
            'combination' if route=='context_graph_early5' else 'transfer')
-    return dict(FIXED,runner='experiments.context_graph.full_run',
+    return dict(FIXED,runner='experiments.context_graph.full_run',numerical_solver='stable_lu_certified',
         adaptation_schema=SCHEMA,adaptation_route=route,input_id=input_id,
         k=20,kd=20,ks=20,promotion_schedule='early5' if route=='context_graph_early5' else 'fixed5',
         boundary_rho=1.,context_builder_id=BUILDER_ID,
@@ -39,11 +39,13 @@ def recipe(route,input_id):
 def validate(cfg,require_bound=False):
     expected=recipe(cfg.get('adaptation_route'),cfg.get('input_id'))
     for key,value in expected.items():
-        if key=='path_binding':continue
+        if key in ('path_binding','numerical_solver'):continue
         if cfg.get(key)!=value or isinstance(cfg.get(key),bool)!=isinstance(value,bool):
             raise ValueError('Fixed context setting differs: '+key)
     if any(key in cfg for key in ('relation_schema','f1_config_schema','research_schema','theta','rho','support_file','original_solver')):
         raise ValueError('Unplanned context model combination')
+    if cfg.get('numerical_solver','warm_certified') not in ('warm_certified','stable_lu_certified'):
+        raise ValueError('Unknown context numerical solver')
     if cfg.get('path_binding')=='required':
         if require_bound:raise ValueError('Context input needs preparation')
         if any(k in cfg for k in ('commit','cache','output','workers','input_sha256')):raise ValueError('Unbound context recipe claims runtime data')
@@ -81,8 +83,10 @@ def validate(cfg,require_bound=False):
         if out==cache or out in cache.parents or cache in out.parents:raise ValueError('Input/output overlap')
         if out==original or out in original.parents or original in out.parents:raise ValueError('Original input/output overlap')
     else:raise ValueError('Unknown context binding state')
-    return {k:cfg[k] for k in ('adaptation_schema','adaptation_route','input_id','context_variant',
+    binding={k:cfg[k] for k in ('adaptation_schema','adaptation_route','input_id','context_variant',
         'kappa_rule','context_mass_rule','context_diagonal','context_bridges','permutation_seed','permutation_bins','promotion_schedule')}
+    if 'numerical_solver' in cfg:binding['numerical_solver']=cfg['numerical_solver']
+    return binding
 
 
 def write_recipes(directory):

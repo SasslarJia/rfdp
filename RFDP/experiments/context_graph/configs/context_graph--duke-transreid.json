@@ -19,6 +19,7 @@
   "memory_limit_bytes": 25769803776,
   "worker_private_budget_bytes": 805306368,
   "output_budget_bytes": 3221225472,
+  "numerical_solver": "stable_lu_certified",
   "adaptation_schema": "context-graph-v1",
   "adaptation_route": "context_graph",
   "input_id": "duke-transreid",

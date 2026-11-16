@@ -80,9 +80,17 @@ def rebuild_camera_boundary(graph, cameras, rho, indices, targets, bridges):
 
 
 class AdaptationSolver:
-    def __init__(self, route, schedule, graph, cameras=None, rho=.5):
+    def __init__(self, route, schedule, graph, cameras=None, rho=.5, numerical_solver='warm_certified'):
         self.route, self.schedule, self.rho = route, schedule, rho
-        self.warm = WarmOriginalSolver()
+        if numerical_solver == 'stable_lu_certified':
+            from experiments.continuous_fitting.stable_original_solver import StableOriginalSolver, SOLVER_ID as stable_id
+            self.warm = StableOriginalSolver()
+            self.linear_solver_id = stable_id
+        elif numerical_solver == 'warm_certified':
+            self.warm = WarmOriginalSolver()
+            self.linear_solver_id = WARM_SOLVER_ID
+        else:
+            raise ValueError('Unknown numerical solver')
         self.contacts = (CameraBoundaryAccumulator(graph, cameras, rho)
                          if route == 'camera_boundary' else None)
 
@@ -99,7 +107,7 @@ class AdaptationSolver:
         values, residual = self.warm(w, fitting, alpha, beta, diagnostics=diagnostics,
                                     indices=indices, targets=targets, bridges=bridges)
         event = certified.EVENTS[-1]
-        event.update(solver_id=SOLVER_ID, linear_solver_id=WARM_SOLVER_ID,
+        event.update(solver_id=SOLVER_ID, linear_solver_id=self.linear_solver_id,
                      adaptation_route=self.route, promotion_schedule=self.schedule)
         if self.contacts is not None:
             event.update(fitting_rho=self.rho, fitting_boundary_sha256=boundary_sha(fitting),
@@ -114,6 +122,15 @@ def initialize(cfg, graph, affinity, compute=True):
         raise ValueError('Unsupported original-equation adaptation')
     schedule = cfg['promotion_schedule']
     promotion_step(schedule, 0, cfg['step'])
+    numerical_solver = cfg.get('numerical_solver', 'warm_certified')
+    if numerical_solver == 'stable_lu_certified':
+        if route not in ('context_graph', 'context_graph_permuted', 'context_graph_early5'):
+            raise ValueError('Stable context numerical path is not enabled for other routes')
+        from experiments.continuous_fitting.stable_original_solver import SOLVER_ID as expected_linear_id
+    elif numerical_solver == 'warm_certified':
+        expected_linear_id = WARM_SOLVER_ID
+    else:
+        raise ValueError('Unknown numerical solver')
     graph = sparse.csr_matrix(graph, dtype=np.float64, copy=True)
     graph.sort_indices()
     if not graph.has_canonical_format or graph.shape != affinity.shape:
@@ -132,7 +149,7 @@ def initialize(cfg, graph, affinity, compute=True):
 
     def certifier(w, e, values, event, *, alpha, beta, source, indices, targets, bridges):
         assert source == 'original' and event['adaptation_route'] == route
-        assert event['solver_id'] == SOLVER_ID and event['linear_solver_id'] == WARM_SOLVER_ID
+        assert event['solver_id'] == SOLVER_ID and event['linear_solver_id'] == expected_linear_id
         assert event['promotion_schedule'] == schedule
         fitting = e
         if route == 'camera_boundary':
@@ -145,7 +162,7 @@ def initialize(cfg, graph, affinity, compute=True):
 
     engine = None
     if compute:
-        solver = AdaptationSolver(route, schedule, graph, cameras, rho)
+        solver = AdaptationSolver(route, schedule, graph, cameras, rho, numerical_solver)
         engine = ScheduledIHyRDP(graph, affinity, alpha=cfg['alpha'], beta=cfg['beta'],
                                 step=cfg['step'], stage_solver=solver,
                                 promotion_schedule=schedule)
