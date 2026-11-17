@@ -59,6 +59,9 @@ def recipe(route, input_id, *, conditional=False):
 
 
 def validate(cfg, require_bound=False):
+    if cfg.get('adaptation_schema') == 'early-context-switch-v1':
+        from experiments.early_context.protocol import validate as validate_switch
+        return validate_switch(cfg, require_bound=require_bound)
     if cfg.get('adaptation_schema') == 'context-graph-v1':
         from experiments.context_graph.protocol import validate as validate_context
         return validate_context(cfg, require_bound=require_bound)

@@ -58,7 +58,7 @@ def check_graph(cache,cfg,known_hashes=None):
 
 def check_bound_inputs(cfg):
     """Recheck preparation semantics; self-declared file hashes alone are insufficient."""
-    if cfg.get('adaptation_schema')=='context-graph-v1':
+    if cfg.get('adaptation_schema') in ('context-graph-v1','early-context-switch-v1'):
         from experiments.context_graph.full_run import check_graph
         check_graph(Path(cfg['cache']),cfg,known_hashes=cfg['input_sha256'])
     if cfg['k']==30:

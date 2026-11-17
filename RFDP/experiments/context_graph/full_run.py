@@ -47,8 +47,8 @@ def check_graph(cache,cfg,known_hashes=None):
     return meta
 
 
-def prepare(recipe_path,node_path):
-    cfg=json.loads(Path(recipe_path).read_text());protocol.validate(cfg)
+def prepare(recipe_path,node_path,*,plan=protocol):
+    cfg=json.loads(Path(recipe_path).read_text());plan.validate(cfg)
     if cfg['path_binding']!='required':raise ValueError('Prepare expects an unbound recipe')
     if platform.system()!='Linux':raise RuntimeError('Bind full execution on the Linux node')
     node=shared.load_node(node_path);workspace=resources.native_path(node['workspace'])
@@ -98,7 +98,7 @@ def prepare(recipe_path,node_path):
             output=str(workspace/'runs'/shared.unit_id(cfg)),input_sha256={str(p):full.sha(p) for p in paths},
             graph_sha256=meta['files']['graph.npz'],context_kappa=meta['calibration']['kappa'],context_scale=meta['calibration']['scale'],
             context_parent_graph_sha256=meta['parent_graph_sha256'],worker_address_space_limit_bytes=shared_bytes+cfg['worker_private_budget_bytes'])
-        protocol.validate(cfg,require_bound=True);shared.check_bound_inputs(cfg)
+        plan.validate(cfg,require_bound=True);shared.check_bound_inputs(cfg)
         state=resources.snapshot(cfg,reserve=True);reserved=resources.reservation(cfg,state)
         configs=workspace/'configs';configs.mkdir(exist_ok=True);path=configs/(shared.unit_id(cfg)+'.json')
         if path.exists() and json.loads(path.read_text())!=cfg:raise ValueError('Do not overwrite a differently bound config')

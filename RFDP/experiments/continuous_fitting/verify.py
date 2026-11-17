@@ -29,7 +29,7 @@ def bridge_edges(graph,full,labels,active,sums,kernel=None):
     choices.sort(key=lambda t:(-t[0],t[1],t[2]))
     return [[i,j,float(full[i,j]) if kernel is None else float(kernel([i],[j])[0,0])] for _,i,j in choices[:5]]
 
-def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None,score_decoder=None,promotion_schedule='fixed5'):
+def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,check=lambda:None,*,kernel=None,full_sums=None,alpha=5.,beta=25.,admission_policy='original',camera_ids=None,admission_version=None,f1_nu=1.5,f1_updates=1,stage_certifier=None,score_decoder=None,promotion_schedule='fixed5',prefix_only=False):
     from . import f1, research_config
     from experiments.reid_adaptation.schedule import promotion_step
     promotion_step(promotion_schedule,0)
@@ -38,7 +38,11 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
         assert admission_policy=='original' and kernel is None
     if source in f1.SOURCES:
         assert f1_updates==1 and admission_policy=='original' and kernel is None
-    n=graph.shape[0];prefix=list(map(int,prefix));rank=list(map(int,rank))
+    n=graph.shape[0];prefix=list(map(int,prefix))
+    if prefix_only:
+        assert rank is None and similarity is None
+    else:
+        rank=list(map(int,rank))
     assert admission_policy in ADMISSION_POLICIES
     if admission_policy!='original':
         assert source=='original' and kernel is None
@@ -143,9 +147,10 @@ def verify_query(graph,full,similarity,query,prefix,rank,rows,source,qn,depth,ch
             boundary[graph.indices[begin:end]]+=graph.data[begin:end]
         active.update(map(int,labels[selected]));batches+=1;bridges+=bool(expected_bridges);edges+=len(expected_bridges)
     assert labeled==prefix and batches==calls+no_solve
-    used=set(prefix);expected=[i for i in prefix if i>=qn]
-    expected+=sorted((i for i in range(qn,n) if i not in used),key=lambda i:(-float(similarity[i]),i))
-    assert rank==expected and sorted(rank)==list(range(qn,n))
+    if not prefix_only:
+        used=set(prefix);expected=[i for i in prefix if i>=qn]
+        expected+=sorted((i for i in range(qn,n) if i not in used),key=lambda i:(-float(similarity[i]),i))
+        assert rank==expected and sorted(rank)==list(range(qn,n))
     return dict(solver_calls=calls,linear_systems=linear_systems,mm_iterations=mm_iterations,linear_solve_calls=linear_solve_calls,refinement_solve_calls=refinement_solve_calls,iterations=batches,no_solve_batches=no_solve,
                 bridge_events=bridges,bridge_edges=edges,max_recomputed_residual=maximum,
                 max_reported_residual=reported,max_unlabeled=max_size,**work_counts)

@@ -117,6 +117,9 @@ class AdaptationSolver:
 
 def initialize(cfg, graph, affinity, compute=True):
     """Protocol validation belongs to the caller; bind only this runtime."""
+    if cfg.get('adaptation_schema') == 'early-context-switch-v1':
+        from experiments.early_context.runtime import initialize as initialize_switch
+        return initialize_switch(cfg, graph, affinity, compute)
     route = cfg['adaptation_route']
     if route not in ROUTES or cfg['source'] != 'original':
         raise ValueError('Unsupported original-equation adaptation')
