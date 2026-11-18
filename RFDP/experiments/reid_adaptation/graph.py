@@ -111,23 +111,28 @@ def _distance_sums(distance, kd, block_rows, progress=None):
     return sums
 
 
+def affinity_block(distance_rows, sums, start, end, weight):
+    """Original FP32 operations on whole rows, in historical order."""
+    delta = weight * (sums[start:end, None] + sums[None, :])
+    np.divide(1, delta, out=delta)
+    np.power(delta, 2.0, out=delta)
+    values = np.array(distance_rows, copy=True, order='C')
+    np.power(values, 2.0, out=values)
+    np.negative(values, out=values)
+    values *= delta
+    np.exp(values, out=values)
+    if not np.isfinite(values).all():
+        raise ValueError('Nonfinite Dist2Aff result')
+    return values
+
+
 def _write_affinity(distance, sums, path, kd, gamma, block_rows, progress=None):
     n = len(distance)
     affinity = np.lib.format.open_memmap(path, mode='w+', dtype=np.float32, shape=(n, n))
     weight = gamma / (2 * kd)
     try:
         for start, end in _blocks(n, block_rows):
-            # Do not rewrite as (D / denominator)**2: rounding differs.
-            delta = weight * (sums[start:end, None] + sums[None, :])
-            np.divide(1, delta, out=delta)
-            np.power(delta, 2.0, out=delta)
-            values = np.array(distance[start:end], copy=True, order='C')
-            np.power(values, 2.0, out=values)
-            np.negative(values, out=values)
-            values *= delta
-            np.exp(values, out=values)
-            if not np.isfinite(values).all():
-                raise ValueError('Nonfinite Dist2Aff result')
+            values = affinity_block(distance[start:end], sums, start, end, weight)
             affinity[start:end] = values
             _notice(progress, 'affinity', end, n)
         if not np.array_equal(affinity.diagonal(), np.ones(n, dtype=np.float32)):
@@ -141,6 +146,8 @@ def _write_affinity(distance, sums, path, kd, gamma, block_rows, progress=None):
 
 def _symmetric_rows(affinity, start, end):
     """KnnRstct invokes AffXfrm symmetry again; keep A itself unchanged."""
+    if hasattr(affinity, 'symmetric_rows'):
+        return affinity.symmetric_rows(start, end)
     values = np.array(affinity[start:end], copy=True, order='C')
     values += affinity[:, start:end].T
     values *= .5
