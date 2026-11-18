@@ -14,6 +14,33 @@ from Test_RFDP.test_adaptation_graph import frozen_features, historical_oracle
 
 
 class FullInputTests(unittest.TestCase):
+    def test_resume_checks_a_five_digit_query_before_removing_its_duplicate(self):
+        from experiments.msmt17.diffusion import commit_rows, recover_row, saved_row_hash
+        from experiments.msmt17.extract import save_json
+        from experiments.msmt17.models import digest
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root/"queries").mkdir()
+            (root/"accepted").mkdir()
+            q = 10003
+            table = np.lib.format.open_memmap(root/"rankings.npy", mode="w+",
+                                              dtype=np.int32, shape=(q+1, 3))
+            row = np.array([11002, 11000, 11001], dtype=np.int32)
+            duplicate = root/"queries"/f"{q}.rankings.npy"
+            np.save(duplicate, row)
+            checked = root/"accepted"/f"{q}.json"
+            save_json(checked, dict(query=q, signature="example"))
+            save_json(root/"queries"/f"{q}.json", dict(signature="example",
+                      readback_sha256=digest(checked), rankings_sha256=saved_row_hash(row)))
+            self.assertTrue(recover_row(root, table, q, "example"))
+            commit_rows(table, root, [q])
+            self.assertFalse(duplicate.exists())
+            self.assertTrue(recover_row(root, table, q, "example"))
+            table[q, 0] = 0
+            with self.assertRaises(ValueError):
+                recover_row(root, table, q, "example")
+
     def test_packed_graph_exact_against_historical_operators(self):
         for n, width in ((37, 6), (131, 64), (17, 1)):
             with self.subTest(n=n, width=width), tempfile.TemporaryDirectory() as tmp:

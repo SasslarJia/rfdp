@@ -269,7 +269,7 @@ def compute_query(query):
                     assert t['unlabeled'][:CFG['depth']-len(t['labeled'])]==nominated
                 save_start=time.monotonic()
                 row={k:t[k] for k in ['iteration','labeled','direct','indirect','unlabeled','selected','bridges','residual']}
-                if 'adaptation_schema' in CFG:
+                if 'promotion_schedule' in t:
                     row.update(promotion_step=t['promotion_step'],promotion_schedule=t['promotion_schedule'])
                 if binding:
                     assert t['admission_policy']==binding['admission_policy'] and t['admission_version']==binding['admission_version']
