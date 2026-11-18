@@ -48,3 +48,4 @@ data/
 
 # Fixed scientific recipes and a secret-free execution-node template.
 !RFDP/experiments/reid_adaptation/configs/*.json
+!RFDP/experiments/msmt17/assets.json
