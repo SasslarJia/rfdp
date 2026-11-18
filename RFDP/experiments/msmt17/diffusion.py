@@ -26,8 +26,8 @@ from .extract import COUNTS, block_hash, read_json, save_json, writer
 from .graph import PackedSymmetric
 from .models import SPECS, digest
 from .rankings import accept_ranking, frozen_input
+from .resources import GIB, cloud_state
 
-GIB = 2**30
 PRIVATE_BUDGET = GIB
 MEMORY_MARGIN = 2*GIB
 EVIDENCE_BUDGET = 2*GIB
@@ -35,22 +35,6 @@ EVIDENCE_BUDGET = 2*GIB
 
 def utc_now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-
-def cloud_state(paths):
-    cgroup = Path("/sys/fs/cgroup")
-    cap = int((cgroup/"memory.max").read_text())
-    used = int((cgroup/"memory.current").read_text())
-    if used > cap*.7:
-        raise MemoryError(f"Cloud RAM reserve reached ({used}/{cap} bytes)")
-    disks = {}
-    for path in set(paths):
-        d = shutil.disk_usage(path)
-        floor = max(d.total//4, 10*GIB)
-        if d.free < floor:
-            raise OSError(f"Disk reserve reached at {path}: {d.free} < {floor}")
-        disks[str(path)] = dict(free=d.free, floor=floor, total=d.total)
-    return dict(memory_current=used, memory_limit=cap, disks=disks)
 
 
 def installed_sources():
