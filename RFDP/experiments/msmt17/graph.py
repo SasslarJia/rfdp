@@ -7,7 +7,6 @@ of every affinity tile byte for byte via SHA-256.
 """
 import argparse
 import hashlib
-import shutil
 import time
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from experiments.reid_adaptation import graph as historical
 from .extract import TOTAL, block_hash, read_json, save_json, writer
 from .models import SPECS, digest
 from .rankings import frozen_input
+from .resources import require_disk_space
 
 
 class PackedSymmetric:
@@ -134,9 +134,7 @@ def build(frozen, backbone, output, packed_path, block_rows=128):
         n = TOTAL
         packed_path.parent.mkdir(parents=True, exist_ok=True)
         footprint = n*(n+1)//2*4 + 4096
-        disk = shutil.disk_usage(packed_path.parent)
-        if disk.free-footprint < max(10*2**30, disk.total//4):
-            raise OSError("Full symmetric graph would cross the storage reserve")
+        require_disk_space(packed_path.parent, footprint)
         f = np.load(feature_path, mmap_mode="r")
         z = np.lib.format.open_memmap(output/"features.npy", mode="w+", dtype=np.float32, shape=f.shape)
         for lo, hi in historical._blocks(n, 512):

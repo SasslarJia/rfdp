@@ -3,6 +3,15 @@ import shutil
 from pathlib import Path
 
 GIB = 2**30
+DISK_MARGIN_BYTES = 512 * 2**20
+
+
+def require_disk_space(path, output_bytes):
+    """Reserve the known output bytes plus a small allowance for filesystem writes."""
+    free = shutil.disk_usage(path).free
+    if free < output_bytes + DISK_MARGIN_BYTES:
+        raise OSError(f"Insufficient space at {path}: {free} bytes free, "
+                      f"{output_bytes} output bytes and {DISK_MARGIN_BYTES} bytes of headroom needed")
 
 
 def cloud_state(paths):
@@ -14,7 +23,7 @@ def cloud_state(paths):
     disks = {}
     for path in set(paths):
         d = shutil.disk_usage(path)
-        floor = max(d.total//4, 10*GIB)
+        floor = DISK_MARGIN_BYTES
         if d.free < floor:
             raise OSError(f"Disk reserve reached at {path}: {d.free} < {floor}")
         disks[str(path)] = dict(free=d.free, floor=floor, total=d.total)

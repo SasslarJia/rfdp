@@ -1,7 +1,6 @@
 """Compute and independently read back official, full-gallery MSMT17 rankings."""
 import argparse
 import os
-import shutil
 import time
 from pathlib import Path
 
@@ -10,6 +9,7 @@ import numpy as np
 from EVAL.ReIDEval import _evaluate_details
 from .extract import COUNTS, TOTAL, block_hash, read_json, save_json, validate_rows, verify_one, writer
 from .models import SPECS, digest
+from .resources import require_disk_space
 
 
 def frozen_input(root, backbone):
@@ -117,9 +117,7 @@ def raw_cosine(root, backbone, output, path, block_rows=64):
         else:
             if path.exists():
                 raise FileExistsError(path)
-            total, _, free = shutil.disk_usage(path.parent)
-            if free - (qn * gn * 4 + 4096) < max(total//4, 10*1024**3):
-                raise OSError("Ranking storage would infringe the disk reserve")
+            require_disk_space(path.parent, qn * gn * 4 + 4096)
             ranks = np.lib.format.open_memmap(path, mode="w+", dtype=np.int32, shape=(qn, gn))
             progress = dict(binding=binding, blocks=[], compute_s=0., write_s=0.)
             save_json(progress_path, progress)

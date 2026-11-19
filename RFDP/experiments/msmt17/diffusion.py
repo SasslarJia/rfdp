@@ -11,7 +11,6 @@ import io
 import json
 import multiprocessing as mp
 import resource
-import shutil
 import time
 import traceback
 from pathlib import Path
@@ -26,7 +25,7 @@ from .extract import COUNTS, block_hash, read_json, save_json, writer
 from .graph import PackedSymmetric
 from .models import SPECS, digest
 from .rankings import accept_ranking, frozen_input
-from .resources import GIB, cloud_state
+from .resources import GIB, cloud_state, require_disk_space
 
 PRIVATE_BUDGET = GIB
 MEMORY_MARGIN = 2*GIB
@@ -162,9 +161,7 @@ def run(frozen, backbone, cache, schedule, output, store, revision):
             for p, needed in ((output, EVIDENCE_BUDGET), (store, nq*ng*4+4096)):
                 device = p.stat().st_dev
                 reserve[device] = reserve.get(device, 0)+needed
-                disk = shutil.disk_usage(p)
-                if disk.free-reserve[device] < max(disk.total//4, 10*GIB):
-                    raise OSError(f"Insufficient disk for the full output and retained traces at {p}")
+                require_disk_space(p, reserve[device])
             save_json(manifest, dict(signature=signature, **sig_data, start=utc_now(),
                                      ranking_path=str(rank_file.resolve()), initial_resources=state))
         if not profile.exists():

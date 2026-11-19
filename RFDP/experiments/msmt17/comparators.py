@@ -1,7 +1,6 @@
 """One registered configuration per MSMT17 comparator, with complete gallery readback."""
 import argparse
 import os
-import shutil
 import time
 import traceback
 from pathlib import Path
@@ -15,7 +14,7 @@ from .models import SPECS, digest
 from .neighbors import DistanceRows, ecn_rank_blocks, jaccard_encoding, jaccard_rank_blocks, leading_neighbors
 from .propagation import cheb_propagate, mr_rank_blocks
 from .rankings import accept_ranking, frozen_input
-from .resources import GIB, cloud_state
+from .resources import GIB, cloud_state, require_disk_space
 
 REFERENCE = {
     "k-reciprocal": "04bf1b5886ef06275d88be4d68d8f8cfd3ebc892e026f41e848ce294ab192b8e",
@@ -81,9 +80,7 @@ def run(frozen, backbone, cache, method, output):
         else:
             if path.exists():
                 raise FileExistsError(path)
-            usage = shutil.disk_usage(output)
-            if usage.free - (nq*ng*4+64*2**20) < max(10*GIB, usage.total//4):
-                raise OSError("Insufficient disk for a complete comparator cell")
+            require_disk_space(output, nq*ng*4 + 4096 + 64*2**20)
             table = np.lib.format.open_memmap(path, mode="w+", dtype=np.int32, shape=(nq, ng))
             progress = dict(binding=binding, blocks=[], compute_s=0., save_s=0.)
             save_json(progress_file, progress)

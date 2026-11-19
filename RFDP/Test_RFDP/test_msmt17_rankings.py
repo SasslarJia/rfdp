@@ -3,17 +3,32 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 from scipy import sparse
 
 from experiments.msmt17.graph import PackedSymmetric, transform, write_distances
 from experiments.msmt17.rankings import checked_row
+from experiments.msmt17.resources import DISK_MARGIN_BYTES, GIB, require_disk_space
 from experiments.reid_adaptation import graph
 from Test_RFDP.test_adaptation_graph import frozen_features, historical_oracle
 
 
 class FullInputTests(unittest.TestCase):
+    def test_disk_admission_uses_planned_bytes_on_the_output_volume(self):
+        rank_bytes = 11659 * 82161 * 4 + 4096
+        needed = rank_bytes + 2 * GIB
+        disk = SimpleNamespace(total=110 * GIB, free=29 * GIB)
+        with patch('experiments.msmt17.resources.shutil.disk_usage', return_value=disk):
+            require_disk_space('/data', needed)
+            disk.free = needed + DISK_MARGIN_BYTES
+            require_disk_space('/data', needed)
+            disk.free -= 1
+            with self.assertRaises(OSError):
+                require_disk_space('/data', needed)
+
     def test_resume_checks_a_five_digit_query_before_removing_its_duplicate(self):
         from experiments.msmt17.diffusion import commit_rows, recover_row, saved_row_hash
         from experiments.msmt17.extract import save_json
