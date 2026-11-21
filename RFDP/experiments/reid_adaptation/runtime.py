@@ -14,7 +14,7 @@ from experiments.continuous_fitting import certified
 from experiments.continuous_fitting.original_solver import WarmOriginalSolver, SOLVER_ID as WARM_SOLVER_ID
 from .schedule import ScheduledIHyRDP, promotion_step
 
-ROUTES = ('p1_graph', 'early5', 'camera_boundary', 'p1_early5', 'late5',
+ROUTES = ('p1_graph', 'early5', 'early10', 'camera_boundary', 'p1_early5', 'late5',
           'context_graph', 'context_graph_permuted', 'context_graph_early5')
 SOLVER_ID = 'reid-adaptation-warm-certified-v1'
 

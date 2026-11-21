@@ -29,6 +29,18 @@ class AdaptationProtocolTests(unittest.TestCase):
             with self.assertRaises(ValueError):protocol.recipe('early5','market-osnet')
             with self.assertRaises(ValueError):protocol.recipe('camera_boundary','duke-transreid')
 
+    def test_window_sensitivity_uses_only_the_original_duke_osnet_graph(self):
+        cfg = protocol.recipe('early10', 'duke-osnet')
+        protocol.validate(cfg)
+        self.assertEqual((cfg['phase'], cfg['promotion_schedule'], cfg['boundary_rho']),
+                         ('window_sensitivity', 'early10', 1.0))
+        self.assertEqual((cfg['kd'], cfg['ks'], cfg['step'], cfg['depth'], cfg['bridge_budget']),
+                         (20, 20, 5, 500, 5))
+        with self.assertRaises(ValueError):
+            protocol.validate(dict(cfg, promotion_schedule='early5'))
+        with self.assertRaises(ValueError):
+            protocol.recipe('early10', 'market-osnet')
+
     def test_metadata_order_and_population(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/'labels.json'

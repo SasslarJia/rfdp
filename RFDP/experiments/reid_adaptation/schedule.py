@@ -1,7 +1,8 @@
 """Admission schedules; bridge proposals always retain the original budget."""
 from MODEL.Paper_RFDP.PaperFullIterative import FullIHyRDP
 
-SCHEDULES = ('fixed5', 'early5', 'late5')
+EARLY_WINDOWS = {'early5': 5, 'early10': 10}
+SCHEDULES = ('fixed5', *EARLY_WINDOWS, 'late5')
 
 
 def promotion_step(schedule, promoted, base_step=5):
@@ -12,7 +13,7 @@ def promotion_step(schedule, promoted, base_step=5):
     """
     if schedule not in SCHEDULES or base_step != 5 or promoted < 0:
         raise ValueError('Invalid fixed-five promotion schedule')
-    if schedule == 'early5' and promoted < 5:
+    if promoted < EARLY_WINDOWS.get(schedule, 0):
         return 1
     if schedule == 'late5':
         if promoted < 100:

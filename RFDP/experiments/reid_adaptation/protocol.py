@@ -11,6 +11,7 @@ SCHEMA = 'reid-adaptation-v1'
 ROUTES = {
     'p1_graph': dict(k=30, kd=30, ks=30, promotion_schedule='fixed5', boundary_rho=1.),
     'early5': dict(k=20, kd=20, ks=20, promotion_schedule='early5', boundary_rho=1.),
+    'early10': dict(k=20, kd=20, ks=20, promotion_schedule='early10', boundary_rho=1.),
     'camera_boundary': dict(k=20, kd=20, ks=20, promotion_schedule='fixed5', boundary_rho=.5),
     'p1_early5': dict(k=30, kd=30, ks=30, promotion_schedule='early5', boundary_rho=1.),
     'late5': dict(k=20, kd=20, ks=20, promotion_schedule='late5', boundary_rho=1.),
@@ -39,11 +40,16 @@ def digest(value):
 def recipe(route, input_id, *, conditional=False):
     if route not in ROUTES or input_id not in INPUTS:
         raise ValueError('Unknown route or official frozen input')
-    is_conditional = (route, input_id) not in FIRST_STAGE
-    if not is_conditional and conditional:
-        raise ValueError('First-stage runs have a fixed phase')
-    if is_conditional and route not in ('p1_early5','late5'):
+    if (route, input_id) in FIRST_STAGE:
+        phase = 'first_stage'
+    elif (route, input_id) == ('early10', 'duke-osnet'):
+        phase = 'window_sensitivity'
+    elif route in ('p1_early5', 'late5'):
+        phase = 'conditional'
+    else:
         raise ValueError('This input/route must be reused or is outside this plan')
+    if conditional and phase != 'conditional':
+        raise ValueError('This run has a fixed phase')
     frozen=INPUTS[input_id]
     # Match the historical np.linspace(..., dtype=int) floor convention.
     retained=[i*(frozen['queries']-1)//31 for i in range(32)]
@@ -54,8 +60,8 @@ def recipe(route, input_id, *, conditional=False):
                 expected_cache_input_hashes=copy.deepcopy(frozen['cache_input_hashes']),
                 expected_label_sha256=LABEL_SHA[input_id.split('-')[0]],
                 retained_queries=retained,path_binding='required',
-                phase='conditional' if is_conditional else 'first_stage',
-                requires_decision=is_conditional or (route=='p1_graph' and input_id.endswith('osnet')))
+                phase=phase,
+                requires_decision=phase=='conditional' or (route=='p1_graph' and input_id.endswith('osnet')))
 
 
 def validate(cfg, require_bound=False):

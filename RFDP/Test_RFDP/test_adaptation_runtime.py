@@ -45,8 +45,8 @@ class AdaptationRuntimeTests(unittest.TestCase):
         return sparse.csr_matrix(graph), affinity, cameras, path
 
     def config(self, route, path, rho=.5):
-        schedule = ('early5' if route in ('early5', 'p1_early5') else
-                    'late5' if route == 'late5' else 'fixed5')
+        schedule = ('early5' if route == 'p1_early5' else
+                    route if route in ('early5', 'early10', 'late5') else 'fixed5')
         return dict(adaptation_route=route, source='original', promotion_schedule=schedule,
                     camera_ids_file=str(path), boundary_rho=rho if route == 'camera_boundary' else 1.,
                     alpha=5., beta=25., step=5, depth=500)
@@ -87,9 +87,10 @@ class AdaptationRuntimeTests(unittest.TestCase):
 
     def test_schedule_boundaries_and_late_cap(self):
         self.assertEqual([promotion_step('early5', i) for i in range(7)], [1]*5 + [5]*2)
+        self.assertEqual([promotion_step('early10', i) for i in range(12)], [1]*10 + [5]*2)
         self.assertEqual([promotion_step('late5', i) for i in (95, 97, 98, 99, 100, 104, 105)],
                          [5, 3, 2, 1, 1, 1, 5])
-        for bad in ('early10', 'late1'):
+        for bad in ('early11', 'late1'):
             with self.assertRaises(ValueError):
                 promotion_step(bad, 0)
 
@@ -145,6 +146,19 @@ class AdaptationRuntimeTests(unittest.TestCase):
         singles = [len(t['labeled'])-1 for t in out[2] if t['promotion_step'] == 1]
         self.assertEqual(singles, [100, 101, 102, 103, 104])
         self.verify(cfg, graph, affinity, out)
+
+    def test_window_ten_shares_the_first_five_then_extends_single_admissions(self):
+        graph, affinity, _, path = self.fixture((23,))
+        results = {}
+        for schedule in ('early5', 'early10'):
+            cfg = self.config(schedule, path)
+            engine, *_ = runtime.initialize(cfg, graph, affinity)
+            results[schedule] = self.capture(engine, affinity)
+            self.verify(cfg, graph, affinity, results[schedule])
+        short, long = results['early5'], results['early10']
+        np.testing.assert_array_equal(short[0][:6], long[0][:6])  # includes the query
+        self.assertEqual([len(row['selected']) for row in long[2]][:11], [1]*10+[5])
+        self.assertEqual(short[2][5]['promotion_step'], 5)
 
     def test_rho_one_matches_original_complete_trajectory(self):
         graph, affinity, _, path = self.fixture()
